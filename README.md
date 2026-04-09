@@ -2,7 +2,7 @@
 
 ![Containless Banner](.github/assets/banner.png)
 
-# 📦 Containless
+# Containless
 
 **Docker-like runtime isolation — without the container.**
 

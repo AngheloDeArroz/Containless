@@ -1,5 +1,7 @@
 <div align="center">
 
+![Containless Banner](.github/assets/banner.png)
+
 # 📦 Containless
 
 **Docker-like runtime isolation — without the container.**
@@ -170,10 +172,14 @@ Add `.containless/` to your `.gitignore` — runtime binaries should not be comm
 
 Containless will warn you if this entry is missing.
 
+## Roadmap
+
+Curious about what's next? Check out the [ROADMAP.md](./ROADMAP.md) for future planned features like broader runtime support, shell hooks, and intelligent lockfile parsing.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, build instructions, and how to submit pull requests.
 
 ## License
 
-[MIT](./LICENSE) © Containless Contributors
+[MIT](./LICENSE) © Anghelo Dearroz

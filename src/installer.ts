@@ -6,6 +6,8 @@ import chalk from 'chalk';
 import cliProgress from 'cli-progress';
 import {
   cacheDir,
+  venvDir,
+  venvBinDir,
   runtimeDir,
   runtimeBinDir,
   isWindows,
@@ -32,6 +34,9 @@ export async function installRuntime(
     const binPath = path.join(binDir, info.binaryName);
     if (await fs.pathExists(binPath)) {
       logInfo(`${chalk.bold(name)}@${chalk.bold(version)} is already installed.`);
+      if (name === 'python') {
+        await setupPythonVenv(binPath, cwd);
+      }
       return;
     }
     // Directory exists but binary is missing — re-install
@@ -78,6 +83,54 @@ export async function installRuntime(
   logSuccess(
     `${chalk.bold(name)}@${chalk.bold(version)} installed → ${chalk.dim(path.relative(process.cwd(), destDir))}`
   );
+
+  if (name === 'python') {
+    await setupPythonVenv(binPath, cwd);
+  }
+}
+
+// ── Python Venv Setup ───────────────────────────────────────────────────────
+
+async function setupPythonVenv(pythonExecutable: string, cwd?: string): Promise<void> {
+  const venvPath = venvDir(cwd);
+  
+  if (!(await fs.pathExists(venvPath))) {
+    logInfo('Creating Python virtual environment...');
+    await runProcess(pythonExecutable, ['-m', 'venv', venvPath], cwd);
+    logSuccess(`Virtual environment created → ${chalk.dim(path.relative(process.cwd(), venvPath))}`);
+  }
+
+  const reqPath = path.resolve(cwd || process.cwd(), 'requirements.txt');
+  if (await fs.pathExists(reqPath)) {
+    logInfo('Found requirements.txt, checking dependencies...');
+    const pipExe = path.join(venvBinDir(cwd), isWindows() ? 'pip.exe' : 'pip');
+    
+    try {
+      await runProcess(pipExe, ['install', '-r', 'requirements.txt'], cwd);
+      logSuccess('Dependencies installed successfully.');
+    } catch (err: any) {
+      logError(`Failed to install requirements: ${err.message}`);
+    }
+  }
+}
+
+function runProcess(executable: string, args: string[], cwd?: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const { spawn } = require('child_process');
+    const child = spawn(executable, args, {
+      cwd: cwd || process.cwd(),
+      stdio: 'inherit',
+    });
+
+    child.on('error', reject);
+    child.on('close', (code: number) => {
+      if (code !== 0) {
+        reject(new Error(`Process exited with code ${code}`));
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 // ── Download File ───────────────────────────────────────────────────────────

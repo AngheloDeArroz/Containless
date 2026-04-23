@@ -41,6 +41,16 @@ export function cacheDir(cwd?: string): string {
   return path.join(containlessDir(cwd), 'cache');
 }
 
+export function venvDir(cwd?: string): string {
+  return path.join(containlessDir(cwd), 'venv');
+}
+
+export function venvBinDir(cwd?: string): string {
+  return isWindows()
+    ? path.join(venvDir(cwd), 'Scripts')
+    : path.join(venvDir(cwd), 'bin');
+}
+
 export function runtimeDir(name: string, version: string, cwd?: string): string {
   return path.join(runtimesDir(cwd), `${name}-${version}`);
 }

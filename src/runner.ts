@@ -22,9 +22,19 @@ export async function runCommand(opts: RunOptions): Promise<number> {
 
   // Build the PATH with all local runtime bin directories prepended
   const binPaths: string[] = [];
+  
   for (const [name, version] of Object.entries(runtimes)) {
     const binDir = runtimeBinDir(name, version, workDir);
     binPaths.push(binDir);
+  }
+
+  if (runtimes.python) {
+    const { venvBinDir } = require('./utils');
+    const { pathExistsSync } = require('fs-extra');
+    const venvBin = venvBinDir(workDir);
+    if (pathExistsSync(venvBin)) {
+      binPaths.unshift(venvBin);
+    }
   }
 
   const injectedPath = binPaths.join(sep) + sep + (process.env.PATH || '');

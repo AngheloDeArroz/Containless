@@ -5,9 +5,10 @@ import chalk from 'chalk';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import Table from 'cli-table3';
-import { readConfig } from './config';
+import { readConfig, writeConfig, configPath } from './config';
 import { installRuntime } from './installer';
 import { runCommand } from './runner';
+import { scanProject } from './scanner';
 import {
   parseRuntimeSpec,
   runtimesDir,
@@ -85,6 +86,99 @@ program
       });
 
       process.exit(exitCode);
+    } catch (err: any) {
+      logError(err.message);
+      process.exit(1);
+    }
+  });
+
+// ── Command: init ───────────────────────────────────────────────────────────
+
+program
+  .command('init')
+  .description('Scan the project and auto-generate containless.json')
+  .option('-f, --force', 'Overwrite existing containless.json')
+  .action(async (opts) => {
+    try {
+      console.log(BANNER);
+
+      const cfgPath = configPath();
+
+      // Check if config already exists
+      if (!opts.force && (await fs.pathExists(cfgPath))) {
+        logWarn('containless.json already exists. Use --force to overwrite.');
+        return;
+      }
+
+      logInfo('Scanning project to detect runtimes...\n');
+
+      const result = await scanProject();
+
+      if (Object.keys(result.runtimes).length === 0) {
+        logError('No runtimes detected in this project.');
+        logInfo(
+          'Make sure your project has recognizable config files ' +
+          '(package.json, go.mod, pyproject.toml, pom.xml, etc.)'
+        );
+        return;
+      }
+
+      // Display detection results as a table
+      const table = new Table({
+        head: [
+          chalk.cyan('Runtime'),
+          chalk.cyan('Version'),
+          chalk.cyan('Detected From'),
+        ],
+        style: {
+          head: [],
+          border: ['dim'],
+        },
+        chars: {
+          top: '─', 'top-mid': '┬', 'top-left': '┌', 'top-right': '┐',
+          bottom: '─', 'bottom-mid': '┴', 'bottom-left': '└', 'bottom-right': '┘',
+          left: '│', 'left-mid': '├',
+          mid: '─', 'mid-mid': '┼',
+          right: '│', 'right-mid': '┤',
+          middle: '│',
+        },
+      });
+
+      for (const det of result.detections) {
+        table.push([
+          chalk.bold(det.runtime),
+          det.version,
+          chalk.dim(det.source),
+        ]);
+      }
+
+      console.log(table.toString());
+      console.log('');
+
+      if (result.start) {
+        logInfo(`Start command: ${chalk.bold(result.start)}`);
+      }
+
+      // Build and write config
+      const config = {
+        runtime: result.runtimes,
+        ...(result.start ? { start: result.start } : {}),
+      };
+
+      await writeConfig(config);
+      console.log('');
+      logSuccess(`Generated ${chalk.bold('containless.json')}`);
+
+      // Show the generated content
+      console.log('');
+      console.log(chalk.dim(JSON.stringify(config, null, 2)));
+      console.log('');
+
+      logInfo(
+        'You can now run ' +
+        chalk.bold('containless run') +
+        ' to start your project.'
+      );
     } catch (err: any) {
       logError(err.message);
       process.exit(1);

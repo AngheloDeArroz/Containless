@@ -38,7 +38,28 @@ npx containless
 
 ## Quick Start
 
-1. Create a `containless.json` in your project root:
+1. Run your project:
+
+```bash
+containless run
+```
+
+That's it! Containless will **automatically scan** your project for config files (like `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, etc.), detect the required runtimes and versions, generate a `containless.json`, download the runtimes into `.containless/runtimes/`, and execute your start command — all in one step.
+
+> **Note:** You can also run `containless init` first to preview what was detected before running.
+
+### What gets detected?
+
+| Runtime    | Files Scanned                                              |
+| ---------- | ---------------------------------------------------------- |
+| **Node.js**| `.nvmrc`, `.node-version`, `package.json` (engines)        |
+| **Python** | `.python-version`, `pyproject.toml`, `requirements.txt`, `setup.py` |
+| **Go**     | `go.mod`                                                   |
+| **Java**   | `.java-version`, `pom.xml`, `build.gradle`, `build.gradle.kts` |
+
+### Manual setup (optional)
+
+You can still create a `containless.json` manually if you prefer:
 
 ```json
 {
@@ -49,22 +70,26 @@ npx containless
 }
 ```
 
-2. Run your project:
+## Commands
+
+### `containless run`
+
+Ensures all runtimes are installed locally, then executes the `start` command. If no `containless.json` exists, it will **auto-scan** your project and generate one.
 
 ```bash
 containless run
 ```
 
-That's it! Containless will download Node.js 18.17.0 into `.containless/runtimes/`, then run `npm run dev` using that local Node — completely ignoring any globally installed version.
+### `containless init`
 
-## Commands
-
-### `containless run`
-
-Reads `containless.json`, ensures all defined runtimes are installed locally, then executes the `start` command.
+Scan your project and generate a `containless.json` config file. Shows a table of what was detected and from which files.
 
 ```bash
-containless run
+# Scan and generate containless.json
+containless init
+
+# Overwrite an existing containless.json
+containless init --force
 ```
 
 ### `containless install <runtime@version>`

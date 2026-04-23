@@ -1,6 +1,8 @@
 import * as path from 'path';
 import * as fs from 'fs-extra';
-import { logError } from './utils';
+import chalk from 'chalk';
+import { logError, logInfo, logSuccess, logWarn } from './utils';
+import { scanProject } from './scanner';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -13,19 +15,39 @@ export interface ContainlessConfig {
 
 const CONFIG_FILENAME = 'containless.json';
 
-// ── Read Config ─────────────────────────────────────────────────────────────
+// ── Paths ───────────────────────────────────────────────────────────────────
 
 export function configPath(cwd?: string): string {
   return path.resolve(cwd || process.cwd(), CONFIG_FILENAME);
 }
 
+// ── Write Config ────────────────────────────────────────────────────────────
+
+export async function writeConfig(
+  config: ContainlessConfig,
+  cwd?: string
+): Promise<string> {
+  const filePath = configPath(cwd);
+  const json = JSON.stringify(config, null, 2) + '\n';
+  await fs.writeFile(filePath, json, 'utf-8');
+  return filePath;
+}
+
+// ── Read Config ─────────────────────────────────────────────────────────────
+
 export async function readConfig(cwd?: string): Promise<ContainlessConfig> {
   const filePath = configPath(cwd);
 
   if (!(await fs.pathExists(filePath))) {
-    logError(`Config file not found: ${filePath}`);
-    logError('Create a containless.json in your project root. Example:');
-    console.log(`
+    // Auto-scan the project and generate config
+    logInfo('No containless.json found — scanning project to auto-detect runtimes...\n');
+
+    const result = await scanProject(cwd);
+
+    if (Object.keys(result.runtimes).length === 0) {
+      logError('Could not detect any runtimes in this project.');
+      logError('Create a containless.json in your project root manually. Example:');
+      console.log(`
 {
   "runtime": {
     "node": "18.17.0"
@@ -33,7 +55,34 @@ export async function readConfig(cwd?: string): Promise<ContainlessConfig> {
   "start": "npm run dev"
 }
 `);
-    process.exit(1);
+      process.exit(1);
+    }
+
+    // Build the config from scan results
+    const config: ContainlessConfig = {
+      runtime: result.runtimes,
+    };
+    if (result.start) {
+      config.start = result.start;
+    }
+
+    // Log detections
+    for (const det of result.detections) {
+      logSuccess(
+        `Detected ${chalk.bold(det.runtime)}@${chalk.bold(det.version)} from ${chalk.dim(det.source)}`
+      );
+    }
+    if (result.start) {
+      logSuccess(`Detected start command: ${chalk.bold(result.start)}`);
+    }
+
+    // Write the config file
+    await writeConfig(config, cwd);
+    console.log('');
+    logSuccess(`Generated ${chalk.bold('containless.json')}`);
+    console.log('');
+
+    return config;
   }
 
   try {

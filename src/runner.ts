@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import chalk from 'chalk';
-import { runtimeBinDir, pathSeparator, logInfo, logError } from './utils';
+import { runtimeBinDir, pathSeparator, logInfo, logError, logWarn } from './utils';
 
 // ── Run Command ─────────────────────────────────────────────────────────────
 
@@ -12,13 +12,39 @@ export interface RunOptions {
 }
 
 /**
+ * Dangerous shell metacharacters that could be used for command injection.
+ * These are blocked to prevent arbitrary command execution via the start field.
+ */
+const SHELL_INJECTION_PATTERN = /[;`|&$(){}\\<>!\n\r]/;
+
+/**
+ * Validate a command string for potentially dangerous shell metacharacters.
+ * Throws an error if injection patterns are detected.
+ */
+function validateCommand(command: string): void {
+  if (SHELL_INJECTION_PATTERN.test(command)) {
+    throw new Error(
+      `Potentially dangerous characters detected in command: "${command}". ` +
+      `Shell metacharacters (;, |, &, $, \`, etc.) are not allowed for security reasons. ` +
+      `If you need complex shell commands, wrap them in a script file and reference that instead.`
+    );
+  }
+}
+
+/**
  * Spawn a child process with all local runtime bin directories prepended to PATH.
  * This ensures the local runtimes take precedence over any global installation.
+ *
+ * Security: shell is disabled to prevent command injection. The command string
+ * is parsed manually and executed directly without a shell interpreter.
  */
 export async function runCommand(opts: RunOptions): Promise<number> {
   const { command, runtimes, cwd } = opts;
   const workDir = cwd || process.cwd();
   const sep = pathSeparator();
+
+  // Validate the command for shell injection attempts
+  validateCommand(command);
 
   // Build the PATH with all local runtime bin directories prepended
   const binPaths: string[] = [];
@@ -60,7 +86,9 @@ export async function runCommand(opts: RunOptions): Promise<number> {
       },
       stdio: 'inherit',
       cwd: workDir,
-      shell: true,
+      // Security: shell is intentionally set to false to prevent command injection.
+      // The command is parsed and executed directly without a shell interpreter.
+      shell: false,
     });
 
     child.on('error', (err) => {

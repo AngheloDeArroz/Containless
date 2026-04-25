@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import chalk from 'chalk';
-import { logError, logInfo, logSuccess, logWarn } from './utils';
+import { logError, logInfo, logSuccess, logWarn, validateVersion, isSupportedRuntime } from './utils';
 import { scanProject } from './scanner';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -92,6 +92,26 @@ export async function readConfig(cwd?: string): Promise<ContainlessConfig> {
     if (!config.runtime || typeof config.runtime !== 'object') {
       logError('"runtime" field is missing or invalid in containless.json');
       process.exit(1);
+    }
+
+    // Security: Validate all runtime names and version strings from the config.
+    // These values are used in filesystem paths and download URLs, so they
+    // must be validated to prevent path traversal and injection attacks.
+    for (const [name, version] of Object.entries(config.runtime)) {
+      if (!isSupportedRuntime(name)) {
+        logError(`Unsupported runtime in containless.json: "${name}"`);
+        process.exit(1);
+      }
+      if (typeof version !== 'string') {
+        logError(`Invalid version for runtime "${name}" in containless.json: expected a string`);
+        process.exit(1);
+      }
+      try {
+        validateVersion(version);
+      } catch (err: any) {
+        logError(`Invalid version for runtime "${name}" in containless.json: ${err.message}`);
+        process.exit(1);
+      }
     }
 
     return config;

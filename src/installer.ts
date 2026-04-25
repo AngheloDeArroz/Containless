@@ -236,6 +236,7 @@ async function extractTarGz(
 async function extractZip(archivePath: string, destDir: string): Promise<void> {
   const unzipper = await import('unzipper');
   const zip = fs.createReadStream(archivePath).pipe(unzipper.Parse({ forceStream: true }));
+  const resolvedDest = path.resolve(destDir);
 
   for await (const entry of zip) {
     const entryPath: string = entry.path;
@@ -250,7 +251,16 @@ async function extractZip(archivePath: string, destDir: string): Promise<void> {
       continue;
     }
 
-    const fullPath = path.join(destDir, stripped);
+    const fullPath = path.resolve(destDir, stripped);
+
+    // Security: Prevent ZipSlip / path traversal attacks.
+    // Ensure the resolved path is within the intended destination directory.
+    if (!fullPath.startsWith(resolvedDest + path.sep) && fullPath !== resolvedDest) {
+      entry.autodrain();
+      throw new Error(
+        `Zip entry "${entryPath}" resolves outside the target directory (path traversal detected). Aborting extraction.`
+      );
+    }
 
     if (type === 'Directory') {
       await fs.ensureDir(fullPath);

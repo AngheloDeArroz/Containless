@@ -93,6 +93,34 @@ export interface ParsedRuntime {
 }
 
 /**
+ * Validate a version string to prevent path traversal and injection attacks.
+ * Version strings are interpolated into filesystem paths and download URLs,
+ * so they must be strictly limited to safe characters.
+ */
+const SAFE_VERSION_PATTERN = /^[a-zA-Z0-9._\-+]+$/;
+
+export function validateVersion(version: string): void {
+  if (!version || version.length > 64) {
+    throw new Error(
+      `Invalid version string: "${version}". Version must be non-empty and at most 64 characters.`
+    );
+  }
+
+  if (!SAFE_VERSION_PATTERN.test(version)) {
+    throw new Error(
+      `Invalid version string: "${version}". Version may only contain alphanumeric characters, dots, dashes, underscores, and plus signs.`
+    );
+  }
+
+  // Block path traversal patterns
+  if (version.includes('..') || version.includes('/') || version.includes('\\')) {
+    throw new Error(
+      `Invalid version string: "${version}". Path traversal sequences are not allowed.`
+    );
+  }
+}
+
+/**
  * Parse a string like "node@18.17.0" into { name: "node", version: "18.17.0" }
  */
 export function parseRuntimeSpec(spec: string): ParsedRuntime {
@@ -102,7 +130,14 @@ export function parseRuntimeSpec(spec: string): ParsedRuntime {
       `Invalid runtime spec: "${spec}". Expected format: name@version (e.g. node@18.17.0)`
     );
   }
-  return { name: parts[0].toLowerCase(), version: parts[1] };
+
+  const name = parts[0].toLowerCase();
+  const version = parts[1];
+
+  // Validate version string for safety
+  validateVersion(version);
+
+  return { name, version };
 }
 
 // ── Logging Helpers ─────────────────────────────────────────────────────────

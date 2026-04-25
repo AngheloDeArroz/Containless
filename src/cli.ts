@@ -45,7 +45,7 @@ program
   .description(
     chalk.dim('Docker-like runtime isolation — install and run runtimes locally, no containers needed.')
   )
-  .version('0.1.0')
+  .version('0.2.0')
   .addHelpText('before', BANNER);
 
 // ── Command: run ────────────────────────────────────────────────────────────

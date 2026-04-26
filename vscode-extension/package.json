@@ -1,0 +1,49 @@
+{
+  "name": "containless",
+  "displayName": "Containless",
+  "description": "Auto-detect and use Containless project runtimes in VS Code",
+  "version": "0.1.0",
+  "publisher": "containless",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "runtime",
+    "python",
+    "node",
+    "java",
+    "go",
+    "containless",
+    "isolated"
+  ],
+  "activationEvents": [
+    "workspaceContains:containless.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "containless.detectRuntimes",
+        "title": "Containless: Detect and Configure Runtimes"
+      },
+      {
+        "command": "containless.resetRuntimes",
+        "title": "Containless: Reset to Global Runtimes"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}

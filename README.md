@@ -156,6 +156,66 @@ Example output:
 }
 ```
 
+## IDE Integration: VS Code Extension
+
+The **Containless VS Code Extension** automatically detects and configures your project's local runtimes, so IDEs and tools use them instead of global installs.
+
+### What it does
+
+- 🔍 **Auto-detects** installed Containless runtimes on workspace load
+- ⚙️ **Auto-configures** VS Code settings for Python, Node.js, Java, and Go
+- 📝 **Updates PATH** so terminal and tools use local runtimes first
+- 🎯 **Supports** linters, formatters, language servers, and debuggers
+
+### Installation
+
+1. **Build the extension:**
+   ```bash
+   cd vscode-extension
+   npm install
+   npm run build
+   ```
+
+2. **Install in VS Code:**
+   - Open VS Code Extensions panel (`Ctrl+Shift+X`)
+   - Click **Install from VSIX...**
+   - Select `vscode-extension/dist/extension.vsix` (after packaging)
+
+   Or install from marketplace (coming soon).
+
+3. **Open a Containless project** — the extension auto-activates when it detects `containless.json`
+
+### How it works
+
+After you run `containless run`, the extension:
+1. Scans `.containless/runtimes/` for installed runtimes
+2. Updates workspace settings to point to local binaries:
+   - **Python**: `python.defaultInterpreterPath`
+   - **Node.js**: `npm.binPath`
+   - **Java**: `java.home`, `java.jdt.ls.java.home`
+   - **Go**: `go.goroot`, `go.gopath`
+3. Configures terminal `PATH` to use local runtimes first
+
+### Commands
+
+- **Containless: Detect and Configure Runtimes** — Manually trigger detection
+- **Containless: Reset to Global Runtimes** — Clear workspace-specific runtime settings
+
+### Example: Python in VS Code
+
+**Before:** VS Code uses your system/global Python
+```bash
+$ which python
+/usr/bin/python3.9
+```
+
+**After installing with Containless + extension:**
+```
+python.defaultInterpreterPath → .containless/runtimes/python-3.11.0/bin/python
+```
+
+Now VS Code's Python extension, linters, formatters, and debugger all use the local Python 3.11.0 instead of the global 3.9.
+
 ## Supported Runtimes
 
 | Runtime    | Source                                | Platforms                             |

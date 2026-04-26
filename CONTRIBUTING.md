@@ -58,7 +58,57 @@ src/
 ├── installer.ts        ← Download + extract + cache logic
 ├── runner.ts           ← Spawn child process with injected PATH
 └── utils.ts            ← Platform detection, version parsing, helpers
+
+vscode-extension/
+├── src/
+│   ├── extension.ts         ← Extension entry point
+│   ├── runtimeDetector.ts   ← Scan .containless/runtimes/
+│   └── settingsManager.ts   ← Update VS Code settings
+├── package.json
+├── tsconfig.json
+├── README.md
+└── .vscodeignore
 ```
+
+## VS Code Extension Development
+
+The extension auto-configures VS Code to use locally installed Containless runtimes.
+
+### Building the Extension
+
+```bash
+cd vscode-extension
+npm install
+npm run build
+
+# Watch mode for development
+npm run watch
+```
+
+### Testing the Extension
+
+1. Open `vscode-extension/` as a separate VS Code window
+2. Press `F5` to launch the Extension Development Host
+3. Open a Containless project in the new window
+4. Extension should auto-activate and configure runtimes
+
+### Extension Architecture
+
+- **extension.ts**: Entry point, command registration, activation trigger
+- **runtimeDetector.ts**: Scans `.containless/runtimes/` and detects installed runtimes
+- **settingsManager.ts**: Updates VS Code workspace settings and terminal PATH
+
+### Key APIs Used
+
+- `vscode.workspace.getConfiguration()` — Read/update settings
+- `vscode.workspace.createFileSystemWatcher()` — Watch containless.json
+- `vscode.window.showInformationMessage()` — Show notifications
+
+### Adding Support for New Runtimes
+
+1. Update `RuntimeDetector.getRuntimeBinPath()` with the new runtime's bin path logic
+2. Update `SettingsManager.configureRuntimes()` to set the appropriate VS Code settings
+3. Test by running `containless install <runtime>` then opening in VS Code
 
 ## Code Style
 

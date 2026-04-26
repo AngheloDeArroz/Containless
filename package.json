@@ -8,8 +8,11 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:ext": "cd vscode-extension && npm install && npm run build",
+    "build:all": "npm run build && npm run build:ext",
     "dev": "ts-node src/cli.ts",
     "clean": "rimraf dist",
+    "clean:all": "npm run clean && cd vscode-extension && rimraf dist node_modules",
     "prepublishOnly": "npm run build",
     "lint": "tsc --noEmit"
   },

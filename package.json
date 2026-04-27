@@ -1,6 +1,6 @@
 {
   "name": "containless",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Docker-like CLI for runtime environments — install and run Node.js, Python, Java, and Go locally inside your project folder, completely isolated from global installs.",
   "main": "./dist/cli.js",
   "bin": {

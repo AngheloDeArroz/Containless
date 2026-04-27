@@ -40,33 +40,49 @@ export async function resolvePythonDownloadUrl(version: string): Promise<string>
   const { default: axios } = await import('axios');
   const triple = mapPlatformArch(getPlatform(), getArch());
 
-  // The python-build-standalone project publishes releases with assets matching:
+  // The python-build-standalone project (via astral-sh fork for better reliability) publishes releases:
   // cpython-{version}+{date}-{triple}-install_only.tar.gz
-  const apiUrl = 'https://api.github.com/repos/indygreg/python-build-standalone/releases';
+  const apiUrl = 'https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest';
 
-  const { data: releases } = await axios.get(apiUrl, {
-    params: { per_page: 30 },
-    headers: { Accept: 'application/vnd.github.v3+json' },
-  });
-
-  for (const release of releases) {
-    for (const asset of release.assets) {
-      const name: string = asset.name;
-      // Match pattern: cpython-3.11.0+...-x86_64-unknown-linux-gnu-install_only.tar.gz
-      if (
-        name.startsWith(`cpython-${version}`) &&
-        name.includes(triple) &&
-        name.includes('install_only') &&
-        name.endsWith('.tar.gz')
-      ) {
-        return asset.browser_download_url;
+  let latestRelease: any = null;
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      const response = await axios.get(apiUrl, {
+        headers: { 
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Containless-CLI'
+        },
+        timeout: 15000 // 15s timeout
+      });
+      latestRelease = response.data;
+      break;
+    } catch (error: any) {
+      attempts++;
+      if (attempts >= 3) {
+        throw new Error(`GitHub API request failed after 3 attempts: ${error.message}`);
       }
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+
+  for (const asset of latestRelease.assets) {
+    const name: string = asset.name;
+    // Match pattern: cpython-3.11.0+...-x86_64-unknown-linux-gnu-install_only.tar.gz
+    if (
+      name.startsWith(`cpython-${version}`) &&
+      name.includes(triple) &&
+      name.includes('install_only') &&
+      name.endsWith('.tar.gz')
+    ) {
+      return asset.browser_download_url;
     }
   }
 
   throw new Error(
     `Could not find python-build-standalone release for Python ${version} on ${triple}. ` +
-    `Check available versions at https://github.com/indygreg/python-build-standalone/releases`
+    `Check available versions at https://github.com/astral-sh/python-build-standalone/releases`
   );
 }
 

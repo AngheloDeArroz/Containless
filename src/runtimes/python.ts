@@ -34,44 +34,77 @@ export function getPythonDownloadUrl(version: string): string {
 }
 
 /**
+ * Extract major.minor from a version string like "3.12.0" → "3.12"
+ */
+function getMajorMinor(version: string): string {
+  const parts = version.split('.');
+  if (parts.length >= 2) return `${parts[0]}.${parts[1]}`;
+  return version;
+}
+
+/**
  * Resolve the actual download URL from GitHub releases.
+ *
+ * python-build-standalone only publishes the *latest patch* of each minor
+ * series (e.g. 3.12.13, not 3.12.0). So when a user asks for "3.12.0" we
+ * match on the major.minor prefix ("3.12") and accept whatever patch is
+ * available.
  */
 export async function resolvePythonDownloadUrl(version: string): Promise<string> {
   const { default: axios } = await import('axios');
   const triple = mapPlatformArch(getPlatform(), getArch());
+  const majorMinor = getMajorMinor(version);
 
-  // The python-build-standalone project (via astral-sh fork for better reliability) publishes releases:
-  // cpython-{version}+{date}-{triple}-install_only.tar.gz
-  const apiUrl = 'https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest';
+  // ── Step 1: Discover the latest release tag via latest-release.json ────
+  //    This is far more reliable than the GitHub API /releases/latest endpoint
+  //    and avoids rate-limit issues.
+  let releaseTag: string | null = null;
+  let assetUrlPrefix: string | null = null;
 
-  let latestRelease: any = null;
+  try {
+    const metaResponse = await axios.get(
+      'https://raw.githubusercontent.com/astral-sh/python-build-standalone/latest-release/latest-release.json',
+      { timeout: 15000, headers: { 'User-Agent': 'Containless-CLI' } }
+    );
+    releaseTag = metaResponse.data.tag;
+    assetUrlPrefix = metaResponse.data.asset_url_prefix;
+  } catch {
+    // Fall through to GitHub API below
+  }
+
+  // ── Step 2: Fetch the release assets ───────────────────────────────────
+  const apiUrl = releaseTag
+    ? `https://api.github.com/repos/astral-sh/python-build-standalone/releases/tags/${releaseTag}`
+    : 'https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest';
+
+  let release: any = null;
   let attempts = 0;
   while (attempts < 3) {
     try {
       const response = await axios.get(apiUrl, {
-        headers: { 
+        headers: {
           Accept: 'application/vnd.github.v3+json',
           'User-Agent': 'Containless-CLI'
         },
-        timeout: 15000 // 15s timeout
+        timeout: 15000
       });
-      latestRelease = response.data;
+      release = response.data;
       break;
     } catch (error: any) {
       attempts++;
       if (attempts >= 3) {
         throw new Error(`GitHub API request failed after 3 attempts: ${error.message}`);
       }
-      // Wait 2 seconds before retrying
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 
-  for (const asset of latestRelease.assets) {
+  // ── Step 3: Find a matching asset ──────────────────────────────────────
+  //    Match on major.minor prefix so "3.12.0" finds "cpython-3.12.13+…"
+  for (const asset of release.assets) {
     const name: string = asset.name;
-    // Match pattern: cpython-3.11.0+...-x86_64-unknown-linux-gnu-install_only.tar.gz
     if (
-      name.startsWith(`cpython-${version}`) &&
+      name.startsWith(`cpython-${majorMinor}.`) &&
       name.includes(triple) &&
       name.includes('install_only') &&
       name.endsWith('.tar.gz')
@@ -81,7 +114,7 @@ export async function resolvePythonDownloadUrl(version: string): Promise<string>
   }
 
   throw new Error(
-    `Could not find python-build-standalone release for Python ${version} on ${triple}. ` +
+    `Could not find python-build-standalone release for Python ${majorMinor}.x on ${triple}. ` +
     `Check available versions at https://github.com/astral-sh/python-build-standalone/releases`
   );
 }

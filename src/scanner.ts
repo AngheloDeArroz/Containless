@@ -104,6 +104,12 @@ async function detectNode(dir: string): Promise<Detection | null> {
     }
   }
 
+  // 4. Fallback: check for .js or .ts files
+  const files = await fs.readdir(dir).catch(() => []);
+  if (files.some(f => f.endsWith('.js') || f.endsWith('.ts'))) {
+    return { runtime: 'node', version: DEFAULT_VERSIONS.node, source: 'source files (.js/.ts)' };
+  }
+
   return null;
 }
 
@@ -183,6 +189,12 @@ async function detectPython(dir: string): Promise<Detection | null> {
     return { runtime: 'python', version: DEFAULT_VERSIONS.python, source: 'setup.py (detected)' };
   }
 
+  // 5. Fallback: check for .py files
+  const files = await fs.readdir(dir).catch(() => []);
+  if (files.some(f => f.endsWith('.py'))) {
+    return { runtime: 'python', version: DEFAULT_VERSIONS.python, source: 'source files (.py)' };
+  }
+
   return null;
 }
 
@@ -211,6 +223,12 @@ async function detectGo(dir: string): Promise<Detection | null> {
       return { runtime: 'go', version, source: 'go.mod' };
     }
     return { runtime: 'go', version: DEFAULT_VERSIONS.go, source: 'go.mod (detected)' };
+  }
+
+  // 2. Fallback: check for .go files
+  const files = await fs.readdir(dir).catch(() => []);
+  if (files.some(f => f.endsWith('.go'))) {
+    return { runtime: 'go', version: DEFAULT_VERSIONS.go, source: 'source files (.go)' };
   }
 
   return null;
@@ -278,6 +296,12 @@ async function detectJava(dir: string): Promise<Detection | null> {
     return { runtime: 'java', version: DEFAULT_VERSIONS.java, source: `${fileName} (detected)` };
   }
 
+  // 4. Fallback: check for .java files
+  const files = await fs.readdir(dir).catch(() => []);
+  if (files.some(f => f.endsWith('.java'))) {
+    return { runtime: 'java', version: DEFAULT_VERSIONS.java, source: 'source files (.java)' };
+  }
+
   return null;
 }
 
@@ -303,6 +327,14 @@ async function detectStartCommand(
         // ignore
       }
     }
+
+    // Fallback: single file
+    const files = await fs.readdir(dir).catch(() => []);
+    const jsFiles = files.filter(f => f.endsWith('.js') || f.endsWith('.ts'));
+    if (jsFiles.length === 1) {
+      const file = jsFiles[0];
+      return file.endsWith('.ts') ? `npx ts-node ${file}` : `node ${file}`;
+    }
   }
 
   // Python projects
@@ -317,10 +349,22 @@ async function detectStartCommand(
         return `python ${entry}`;
       }
     }
+
+    // Fallback: single file
+    const files = await fs.readdir(dir).catch(() => []);
+    const pyFiles = files.filter(f => f.endsWith('.py'));
+    if (pyFiles.length === 1) {
+      return `python ${pyFiles[0]}`;
+    }
   }
 
   // Go projects
   if (runtimes.go) {
+    const files = await fs.readdir(dir).catch(() => []);
+    const goFiles = files.filter(f => f.endsWith('.go'));
+    if (goFiles.length === 1) {
+      return `go run ${goFiles[0]}`;
+    }
     return 'go run .';
   }
 
@@ -348,6 +392,13 @@ async function detectStartCommand(
         return 'gradle bootRun';
       }
       return 'gradle run';
+    }
+
+    // Fallback: single file
+    const files = await fs.readdir(dir).catch(() => []);
+    const javaFiles = files.filter(f => f.endsWith('.java'));
+    if (javaFiles.length === 1) {
+      return `java ${javaFiles[0]}`;
     }
   }
 

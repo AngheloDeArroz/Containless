@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build:ext",
+      "label": "npm: build:ext",
+      "detail": "cd vscode-extension && npm install && npm run build",
+      "group": "build"
+    }
+  ]
+}

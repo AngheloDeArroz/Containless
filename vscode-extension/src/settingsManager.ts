@@ -89,17 +89,17 @@ export class SettingsManager {
     const platform = process.platform;
     const pathSeparator = platform === 'win32' ? ';' : ':';
 
-    // Determine the correct VS Code config section for the current platform
-    let envSection: string;
+    // Determine the correct platform key for terminal.integrated.env.{platform}
+    let platformKey: string;
     switch (platform) {
       case 'win32':
-        envSection = 'terminal.integrated.env.windows';
+        platformKey = 'windows';
         break;
       case 'darwin':
-        envSection = 'terminal.integrated.env.osx';
+        platformKey = 'osx';
         break;
       default:
-        envSection = 'terminal.integrated.env.linux';
+        platformKey = 'linux';
         break;
     }
 
@@ -119,11 +119,13 @@ export class SettingsManager {
     }
 
     if (binPaths.length > 0) {
-      const config = vscode.workspace.getConfiguration(envSection, vscode.Uri.file(this.workspaceRoot));
+      // Get the terminal.integrated.env section and update the platform-specific object
+      const config = vscode.workspace.getConfiguration('terminal.integrated.env', vscode.Uri.file(this.workspaceRoot));
+      const currentEnv = config.get<Record<string, string>>(platformKey) || {};
 
       // ${env:PATH} is a VS Code terminal variable that resolves to the current PATH
-      const newPath = binPaths.join(pathSeparator) + pathSeparator + '${env:PATH}';
-      await config.update('PATH', newPath, vscode.ConfigurationTarget.Workspace);
+      currentEnv['PATH'] = binPaths.join(pathSeparator) + pathSeparator + '${env:PATH}';
+      await config.update(platformKey, currentEnv, vscode.ConfigurationTarget.Workspace);
     }
   }
 
@@ -182,13 +184,14 @@ export class SettingsManager {
     await config.update('go.alternateTools', undefined, vscode.ConfigurationTarget.Workspace);
 
     // Reset terminal PATH for all platforms
-    for (const section of [
-      'terminal.integrated.env.windows',
-      'terminal.integrated.env.linux',
-      'terminal.integrated.env.osx',
-    ]) {
-      const termConfig = vscode.workspace.getConfiguration(section, vscode.Uri.file(this.workspaceRoot));
-      await termConfig.update('PATH', undefined, vscode.ConfigurationTarget.Workspace);
+    const envConfig = vscode.workspace.getConfiguration('terminal.integrated.env', vscode.Uri.file(this.workspaceRoot));
+    for (const platformKey of ['windows', 'linux', 'osx']) {
+      const currentEnv = envConfig.get<Record<string, string>>(platformKey);
+      if (currentEnv && currentEnv['PATH']) {
+        delete currentEnv['PATH'];
+        const newValue = Object.keys(currentEnv).length > 0 ? currentEnv : undefined;
+        await envConfig.update(platformKey, newValue, vscode.ConfigurationTarget.Workspace);
+      }
     }
   }
 }

@@ -1,23 +1,41 @@
 {
   "name": "containless",
   "displayName": "Containless",
-  "description": "Auto-detect and use Containless project runtimes in VS Code",
+  "description": "Sandbox your project runtimes — automatically detect and enforce local Node.js, Python, Java, and Go runtimes installed by Containless, so your editor and terminal never touch global installs.",
   "version": "0.1.0",
   "publisher": "containless",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AngheloDeArroz/Containless"
+  },
+  "homepage": "https://github.com/AngheloDeArroz/Containless#readme",
+  "bugs": {
+    "url": "https://github.com/AngheloDeArroz/Containless/issues"
+  },
+  "galleryBanner": {
+    "color": "#0F172A",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
   "keywords": [
     "runtime",
+    "sandbox",
     "python",
     "node",
     "java",
     "go",
     "containless",
-    "isolated"
+    "isolated",
+    "environment",
+    "container"
   ],
   "activationEvents": [
     "workspaceContains:containless.json"
@@ -38,7 +56,9 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "package": "npx @vscode/vsce package",
+    "publish": "npx @vscode/vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

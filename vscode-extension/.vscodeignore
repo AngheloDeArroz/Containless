@@ -5,3 +5,5 @@ node_modules/
 .github/
 **/*.map
 **/*.ts
+.vscode/
+package-lock.json

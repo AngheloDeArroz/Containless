@@ -1,8 +1,9 @@
 name: Publish VS Code Extension
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'containless-extension-v*'
 
 jobs:
   publish:

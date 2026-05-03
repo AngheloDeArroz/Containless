@@ -2,6 +2,7 @@ node_modules/
 dist/
 .containless/
 *.tgz
+*.vsix
 *.log
 .DS_Store
 Thumbs.db

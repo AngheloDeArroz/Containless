@@ -13,6 +13,7 @@ import {
   isWindows,
   logSuccess,
   logInfo,
+  logWarn,
   logError,
   formatBytes,
 } from './utils';
@@ -56,8 +57,26 @@ export async function installRuntime(
   if (await fs.pathExists(cachedArchive)) {
     logInfo(`Using cached archive: ${chalk.dim(info.archiveName)}`);
   } else {
-    // Download
-    await downloadFile(downloadUrl, cachedArchive, name, version);
+    // Security: Download to a temporary file first, then rename atomically.
+    // This prevents partial/corrupt downloads from being treated as valid cache entries.
+    const tempArchive = cachedArchive + '.download';
+    try {
+      await downloadFile(downloadUrl, tempArchive, name, version);
+      await fs.rename(tempArchive, cachedArchive);
+    } catch (err) {
+      // Clean up partial download on failure
+      await fs.remove(tempArchive).catch(() => {});
+      throw err;
+    }
+
+    // TODO: Verify SHA256 checksum against the source's published checksums.
+    // Each runtime source provides checksums:
+    //   - Node.js: https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt
+    //   - Python:  sha256 in GitHub release asset names
+    //   - Java:    Adoptium API provides checksum endpoints
+    //   - Go:      https://go.dev/dl/ provides sha256
+    // This should be implemented to prevent tampered archive execution.
+    logWarn('Checksum verification is not yet implemented. Downloaded archives are not integrity-checked.');
   }
 
   // Extract

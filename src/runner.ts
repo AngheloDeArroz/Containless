@@ -18,6 +18,37 @@ export interface RunOptions {
 const SHELL_INJECTION_PATTERN = /[;`|&$(){}\\<>!\n\r]/;
 
 /**
+ * Allowlist of executables that may appear as the first token of a start command.
+ * This prevents containless.json from being used to execute arbitrary binaries.
+ * The check is case-insensitive and ignores .exe/.cmd suffixes on Windows.
+ */
+const ALLOWED_EXECUTABLES = new Set([
+  'node', 'npm', 'npx', 'yarn', 'pnpm', 'bun',      // Node.js ecosystem
+  'python', 'python3', 'pip', 'pip3', 'uvicorn',       // Python ecosystem
+  'go',                                                  // Go
+  'java', 'javac', 'mvn', 'mvnw', 'gradle', 'gradlew', // Java ecosystem
+  'ts-node',                                             // TypeScript
+]);
+
+/**
+ * Validate the executable (first token) of a command against the allowlist.
+ * Throws if the executable is not recognized as safe.
+ */
+function validateExecutable(executable: string): void {
+  // Normalize: take only the basename, strip .exe/.cmd, lowercase
+  let name = path.basename(executable).toLowerCase();
+  name = name.replace(/\.(exe|cmd|bat|sh)$/, '');
+
+  if (!ALLOWED_EXECUTABLES.has(name)) {
+    throw new Error(
+      `Executable "${executable}" is not in the allowed list. ` +
+      `Allowed executables: ${Array.from(ALLOWED_EXECUTABLES).join(', ')}. ` +
+      `If you believe this executable should be allowed, please open an issue.`
+    );
+  }
+}
+
+/**
  * Validate a command string for potentially dangerous shell metacharacters.
  * Throws an error if injection patterns are detected.
  */
@@ -77,6 +108,9 @@ export async function runCommand(opts: RunOptions): Promise<number> {
   }
 
   const [executable, ...args] = parts;
+
+  // Security: Validate the executable against the allowlist
+  validateExecutable(executable);
 
   return new Promise<number>((resolve) => {
     const child = spawn(executable, args, {

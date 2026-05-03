@@ -322,7 +322,7 @@ async function detectStartCommand(
         // Priority: dev > start > main field
         if (scripts.dev) return 'npm run dev';
         if (scripts.start) return 'npm start';
-        if (pkg.main) return `node ${pkg.main}`;
+        if (pkg.main) return `node "${pkg.main}"`;
       } catch {
         // ignore
       }
@@ -333,7 +333,7 @@ async function detectStartCommand(
     const jsFiles = files.filter(f => f.endsWith('.js') || f.endsWith('.ts'));
     if (jsFiles.length === 1) {
       const file = jsFiles[0];
-      return file.endsWith('.ts') ? `npx ts-node ${file}` : `node ${file}`;
+      return file.endsWith('.ts') ? `npx ts-node "${file}"` : `node "${file}"`;
     }
   }
 
@@ -346,7 +346,7 @@ async function detectStartCommand(
     // Common entry points
     for (const entry of ['app.py', 'main.py', 'run.py']) {
       if (await fs.pathExists(path.join(dir, entry))) {
-        return `python ${entry}`;
+        return `python "${entry}"`;
       }
     }
 
@@ -354,7 +354,7 @@ async function detectStartCommand(
     const files = await fs.readdir(dir).catch(() => []);
     const pyFiles = files.filter(f => f.endsWith('.py'));
     if (pyFiles.length === 1) {
-      return `python ${pyFiles[0]}`;
+      return `python "${pyFiles[0]}"`;
     }
   }
 
@@ -363,7 +363,7 @@ async function detectStartCommand(
     const files = await fs.readdir(dir).catch(() => []);
     const goFiles = files.filter(f => f.endsWith('.go'));
     if (goFiles.length === 1) {
-      return `go run ${goFiles[0]}`;
+      return `go run "${goFiles[0]}"`;
     }
     return 'go run .';
   }
@@ -398,7 +398,7 @@ async function detectStartCommand(
     const files = await fs.readdir(dir).catch(() => []);
     const javaFiles = files.filter(f => f.endsWith('.java'));
     if (javaFiles.length === 1) {
-      return `java ${javaFiles[0]}`;
+      return `java "${javaFiles[0]}"`;
     }
   }
 

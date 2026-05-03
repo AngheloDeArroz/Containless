@@ -5,6 +5,36 @@ import { spawn } from 'child_process';
 import { getOutputChannel, logInfo, logError, logCommand } from './outputChannel';
 
 /**
+ * Dangerous shell metacharacters that should not appear in CLI paths.
+ * If any are present, the path is rejected to prevent shell injection.
+ */
+const SHELL_METACHAR_PATTERN = /[;`|&$(){}\\<>!\n\r]/;
+
+/**
+ * Validate that a CLI path doesn't contain shell metacharacters.
+ * Throws if the path is potentially dangerous.
+ */
+function validateCliPath(cliPath: string): void {
+  if (SHELL_METACHAR_PATTERN.test(cliPath)) {
+    throw new Error(
+      `CLI path "${cliPath}" contains potentially dangerous shell metacharacters. ` +
+      `Please check your containless.cliPath setting.`
+    );
+  }
+}
+
+/**
+ * Shell-quote a single argument for safe use in terminal.sendText.
+ * Wraps in double quotes and escapes embedded double quotes.
+ */
+function shellQuote(arg: string): string {
+  if (/[\s"'\\]/.test(arg)) {
+    return `"${arg.replace(/"/g, '\\"')}"`;
+  }
+  return arg;
+}
+
+/**
  * Locate the containless CLI binary.
  * Search order:
  *   1. User-configured path (containless.cliPath setting)
@@ -17,9 +47,13 @@ export async function findContainlessCLI(workspaceRoot: string): Promise<string 
   // 1. Check user setting
   const config = vscode.workspace.getConfiguration('containless');
   const userPath = config.get<string>('cliPath');
-  if (userPath && fs.existsSync(userPath)) {
-    logInfo(`Using CLI from setting: ${userPath}`);
-    return userPath;
+  if (userPath) {
+    // Security: Validate user-provided path before using it
+    validateCliPath(userPath);
+    if (fs.existsSync(userPath)) {
+      logInfo(`Using CLI from setting: ${userPath}`);
+      return userPath;
+    }
   }
 
   // 2. Check local node_modules
@@ -102,7 +136,11 @@ export async function runInTerminal(
     });
   }
 
-  const fullCommand = `"${cliPath}" ${args.join(' ')}`;
+  // Security: Validate CLI path before sending to terminal
+  validateCliPath(cliPath);
+
+  const quotedArgs = args.map(shellQuote);
+  const fullCommand = `${shellQuote(cliPath)} ${quotedArgs.join(' ')}`;
   logCommand(fullCommand);
 
   containlessTerminal.show();

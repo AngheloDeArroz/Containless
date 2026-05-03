@@ -1,7 +1,7 @@
 {
   "name": "containless",
   "displayName": "Containless",
-  "description": "Sandbox your project runtimes — automatically detect and enforce local Node.js, Python, Java, and Go runtimes installed by Containless, so your editor and terminal never touch global installs.",
+  "description": "Run projects instantly without installing system dependencies or learning Docker. Automatically provision isolated, project-local runtimes for Node.js, Python, Java, and Go.",
   "version": "0.1.0",
   "publisher": "containless",
   "license": "MIT",

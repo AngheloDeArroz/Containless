@@ -50,8 +50,42 @@
       {
         "command": "containless.resetRuntimes",
         "title": "Containless: Reset to Global Runtimes"
+      },
+      {
+        "command": "containless.init",
+        "title": "Containless: Initialize Project"
+      },
+      {
+        "command": "containless.run",
+        "title": "Containless: Run Project"
+      },
+      {
+        "command": "containless.install",
+        "title": "Containless: Install Runtime"
+      },
+      {
+        "command": "containless.clean",
+        "title": "Containless: Clean Runtimes"
+      },
+      {
+        "command": "containless.info",
+        "title": "Containless: Show Runtime Info"
+      },
+      {
+        "command": "containless.showQuickPick",
+        "title": "Containless: Show Commands"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Containless",
+      "properties": {
+        "containless.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override the path to the containless CLI binary. Leave empty to auto-detect."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "tsc",

@@ -3,17 +3,10 @@ name: Publish VS Code Extension
 on:
   release:
     types: [published]
-  push:
-    tags:
-      - 'containless-extension-v*'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Only run for extension releases (skip CLI-only releases)
-    if: >-
-      github.event_name == 'push' ||
-      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'containless-extension-v'))
 
     permissions:
       contents: write  # Needed to upload .vsix to GitHub Release assets

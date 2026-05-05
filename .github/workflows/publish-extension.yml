@@ -16,7 +16,7 @@ jobs:
       (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'containless-extension-v'))
 
     permissions:
-      contents: read
+      contents: write  # Needed to upload .vsix to GitHub Release assets
 
     defaults:
       run:
@@ -39,6 +39,15 @@ jobs:
 
       - name: Build extension
         run: npm run build
+
+      - name: Package extension (.vsix)
+        run: vsce package --out containless.vsix
+
+      - name: Upload .vsix to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./vscode-extension/containless.vsix
 
       - name: Publish to VS Code Marketplace
         run: vsce publish -p ${{ secrets.VSCE_PAT }}

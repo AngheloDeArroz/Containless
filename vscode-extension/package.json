@@ -2,7 +2,7 @@
   "name": "containless",
   "displayName": "Containless",
   "description": "Run projects instantly without installing system dependencies or learning Docker. Automatically provision isolated, project-local runtimes for Node.js, Python, Java, and Go.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "containless",
   "license": "MIT",
   "icon": "icon.png",

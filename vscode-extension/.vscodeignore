@@ -7,3 +7,4 @@ node_modules/
 **/*.ts
 .vscode/
 package-lock.json
+*.vsix

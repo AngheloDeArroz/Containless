@@ -3,6 +3,16 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { RuntimeDetector, DetectedRuntimes } from './runtimeDetector';
 
+/**
+ * Extension IDs for third-party extensions whose configuration keys we write.
+ * We must check these are installed before updating their settings, otherwise
+ * VS Code rejects the write because the key is not registered.
+ */
+const EXT_PYTHON  = 'ms-python.python';
+const EXT_ESLINT  = 'dbaeumer.vscode-eslint';
+const EXT_JAVA    = 'redhat.java';
+const EXT_GO      = 'golang.go';
+
 export class SettingsManager {
   private workspaceRoot: string;
   private detector: RuntimeDetector;
@@ -20,8 +30,8 @@ export class SettingsManager {
   async configureRuntimes(runtimes: DetectedRuntimes): Promise<void> {
     const config = vscode.workspace.getConfiguration(undefined, vscode.Uri.file(this.workspaceRoot));
 
-    // Configure Python
-    if (runtimes.python) {
+    // Configure Python (only if the Python extension is installed)
+    if (runtimes.python && this.isExtensionInstalled(EXT_PYTHON)) {
       const pythonExe = this.detector.getRuntimeExecutable('python', runtimes.python);
       await config.update('python.defaultInterpreterPath', pythonExe, vscode.ConfigurationTarget.Workspace);
 
@@ -38,15 +48,17 @@ export class SettingsManager {
       const nodeExe = this.detector.getRuntimeExecutable('node', runtimes.node);
       const nodeBinDir = this.detector.getRuntimeBinPath('node', runtimes.node);
 
-      // Point ESLint and other extensions to use the local Node.js runtime
-      await config.update('eslint.runtime', nodeExe, vscode.ConfigurationTarget.Workspace);
+      // Point ESLint to use the local Node.js runtime (only if ESLint extension is installed)
+      if (this.isExtensionInstalled(EXT_ESLINT)) {
+        await config.update('eslint.runtime', nodeExe, vscode.ConfigurationTarget.Workspace);
+      }
 
       // Set the Node.js path for extensions that look for it
       await config.update('npm.binPath', nodeBinDir, vscode.ConfigurationTarget.Workspace);
     }
 
-    // Configure Java
-    if (runtimes.java) {
+    // Configure Java (only if the Java extension is installed)
+    if (runtimes.java && this.isExtensionInstalled(EXT_JAVA)) {
       const javaHome = path.join(this.workspaceRoot, '.containless', 'runtimes', `java-${runtimes.java}`);
 
       // Handle macOS layout where Java home is nested
@@ -59,8 +71,8 @@ export class SettingsManager {
       await config.update('java.jdt.ls.java.home', effectiveJavaHome, vscode.ConfigurationTarget.Workspace);
     }
 
-    // Configure Go
-    if (runtimes.go) {
+    // Configure Go (only if the Go extension is installed)
+    if (runtimes.go && this.isExtensionInstalled(EXT_GO)) {
       const goExe = this.detector.getRuntimeExecutable('go', runtimes.go);
       const goRoot = path.join(this.workspaceRoot, '.containless', 'runtimes', `go-${runtimes.go}`);
 
@@ -169,19 +181,27 @@ export class SettingsManager {
   async resetToGlobal(): Promise<void> {
     const config = vscode.workspace.getConfiguration(undefined, vscode.Uri.file(this.workspaceRoot));
 
-    // Reset Python
-    await config.update('python.defaultInterpreterPath', undefined, vscode.ConfigurationTarget.Workspace);
+    // Reset Python (only if the extension is installed)
+    if (this.isExtensionInstalled(EXT_PYTHON)) {
+      await config.update('python.defaultInterpreterPath', undefined, vscode.ConfigurationTarget.Workspace);
+    }
 
     // Reset Node.js
     await config.update('npm.binPath', undefined, vscode.ConfigurationTarget.Workspace);
-    await config.update('eslint.runtime', undefined, vscode.ConfigurationTarget.Workspace);
+    if (this.isExtensionInstalled(EXT_ESLINT)) {
+      await config.update('eslint.runtime', undefined, vscode.ConfigurationTarget.Workspace);
+    }
 
-    // Reset Java
-    await config.update('java.jdt.ls.java.home', undefined, vscode.ConfigurationTarget.Workspace);
+    // Reset Java (only if the extension is installed)
+    if (this.isExtensionInstalled(EXT_JAVA)) {
+      await config.update('java.jdt.ls.java.home', undefined, vscode.ConfigurationTarget.Workspace);
+    }
 
-    // Reset Go
-    await config.update('go.goroot', undefined, vscode.ConfigurationTarget.Workspace);
-    await config.update('go.alternateTools', undefined, vscode.ConfigurationTarget.Workspace);
+    // Reset Go (only if the extension is installed)
+    if (this.isExtensionInstalled(EXT_GO)) {
+      await config.update('go.goroot', undefined, vscode.ConfigurationTarget.Workspace);
+      await config.update('go.alternateTools', undefined, vscode.ConfigurationTarget.Workspace);
+    }
 
     // Reset terminal PATH for all platforms
     const envConfig = vscode.workspace.getConfiguration('terminal.integrated.env', vscode.Uri.file(this.workspaceRoot));
@@ -193,5 +213,14 @@ export class SettingsManager {
         await envConfig.update(platformKey, newValue, vscode.ConfigurationTarget.Workspace);
       }
     }
+  }
+
+  /**
+   * Check whether a VS Code extension is currently installed.
+   * Used to avoid writing configuration keys that are only registered
+   * by specific extensions — VS Code rejects updates for unregistered keys.
+   */
+  private isExtensionInstalled(extensionId: string): boolean {
+    return vscode.extensions.getExtension(extensionId) !== undefined;
   }
 }

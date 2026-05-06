@@ -1,5 +1,28 @@
 /**
  * tests/runner.test.ts
+ *
+ * child_process.spawn is mocked so no real binaries are executed.
+ * Security validation (injection + allowlist) throws BEFORE spawn is reached,
+ * so those tests are completely unaffected by the mock.
+ */
+
+import { vi } from 'vitest';
+import { EventEmitter } from 'events';
+
+// Hoist: mock spawn before any module imports resolve
+vi.mock('child_process', () => ({
+  spawn: vi.fn(() => {
+    const child = new EventEmitter() as any;
+    child.stdin = null;
+    child.stdout = null;
+    child.stderr = null;
+    // Simulate an immediate clean exit so runCommand resolves quickly
+    setImmediate(() => child.emit('close', 0));
+    return child;
+  }),
+}));
+
+/**
  * Security tests for src/runner.ts — validates shell injection prevention
  * and the executable allowlist without modifying any source code.
  *

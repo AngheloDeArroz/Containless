@@ -14,7 +14,10 @@
     "clean": "rimraf dist",
     "clean:all": "npm run clean && cd vscode-extension && rimraf dist node_modules",
     "prepublishOnly": "npm run build",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "files": [
     "dist/",
@@ -63,8 +66,10 @@
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.14.0",
     "@types/unzipper": "^0.10.10",
+    "@vitest/coverage-v8": "^2.0.0",
     "rimraf": "^5.0.7",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }

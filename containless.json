@@ -1,6 +1,0 @@
-{
-  "runtime": {
-    "node": "18.17.0"
-  },
-  "start": "node --version"
-}

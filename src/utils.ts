@@ -82,6 +82,12 @@ export function runtimeBinDir(name: string, version: string, cwd?: string): stri
     return path.join(base, 'bin');
   }
 
+  if (name === 'php') {
+    // Windows PHP from windows.php.net: php.exe is at the archive root (no bin/ dir)
+    // Linux/macOS PHP from shivammathur/php-builder: php binary is at the archive root
+    return base;
+  }
+
   return path.join(base, 'bin');
 }
 
@@ -192,7 +198,7 @@ export function formatBytes(bytes: number): string {
 
 // ── Supported Runtimes ──────────────────────────────────────────────────────
 
-export const SUPPORTED_RUNTIMES = ['node', 'python', 'java', 'go'] as const;
+export const SUPPORTED_RUNTIMES = ['node', 'python', 'java', 'go', 'php'] as const;
 export type RuntimeName = (typeof SUPPORTED_RUNTIMES)[number];
 
 export function isSupportedRuntime(name: string): name is RuntimeName {

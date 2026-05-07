@@ -24,6 +24,7 @@ const DEFAULT_VERSIONS: Record<string, string> = {
   python: '3.12.0',
   java: '21',
   go: '1.22.0',
+  php: '8.3.0',
 };
 
 // ── Main Scanner ────────────────────────────────────────────────────────────
@@ -56,6 +57,12 @@ export async function scanProject(cwd?: string): Promise<ScanResult> {
   if (javaResult) {
     detections.push(javaResult);
     runtimes.java = javaResult.version;
+  }
+
+  const phpResult = await detectPhp(dir);
+  if (phpResult) {
+    detections.push(phpResult);
+    runtimes.php = phpResult.version;
   }
 
   // Detect start command
@@ -305,6 +312,60 @@ async function detectJava(dir: string): Promise<Detection | null> {
   return null;
 }
 
+// ── PHP Detection ────────────────────────────────────────────────────────────
+
+async function detectPhp(dir: string): Promise<Detection | null> {
+  // 1. Check .php-version file
+  const phpVersionPath = path.join(dir, '.php-version');
+  if (await fs.pathExists(phpVersionPath)) {
+    const raw = (await fs.readFile(phpVersionPath, 'utf-8')).trim().split('\n')[0].trim();
+    if (/\d/.test(raw)) {
+      const version = cleanPhpVersion(raw);
+      return { runtime: 'php', version, source: '.php-version' };
+    }
+  }
+
+  // 2. Check composer.json for require.php
+  const composerPath = path.join(dir, 'composer.json');
+  if (await fs.pathExists(composerPath)) {
+    try {
+      const composer = JSON.parse(await fs.readFile(composerPath, 'utf-8'));
+      const phpRange: string | undefined = composer?.require?.php;
+      if (phpRange) {
+        const version = extractVersionFromRange(phpRange, 'php');
+        return { runtime: 'php', version, source: 'composer.json (require.php)' };
+      }
+    } catch {
+      // Malformed JSON — still a PHP project
+    }
+    return { runtime: 'php', version: DEFAULT_VERSIONS.php, source: 'composer.json (detected)' };
+  }
+
+  // 3. Common PHP framework indicators
+  const frameworkIndicators = ['artisan', 'index.php', 'wp-config.php', 'wp-load.php'];
+  for (const indicator of frameworkIndicators) {
+    if (await fs.pathExists(path.join(dir, indicator))) {
+      return { runtime: 'php', version: DEFAULT_VERSIONS.php, source: `${indicator} (detected)` };
+    }
+  }
+
+  // 4. Fallback: check for .php files
+  const files = await fs.readdir(dir).catch(() => []);
+  if (files.some(f => f.endsWith('.php'))) {
+    return { runtime: 'php', version: DEFAULT_VERSIONS.php, source: 'source files (.php)' };
+  }
+
+  return null;
+}
+
+function cleanPhpVersion(raw: string): string {
+  // Handle "8.3.6", "8.3", "8"
+  if (/^\d+\.\d+\.\d+$/.test(raw)) return raw;
+  if (/^\d+\.\d+$/.test(raw)) return raw + '.0';
+  if (/^\d+$/.test(raw)) return raw + '.0.0';
+  return DEFAULT_VERSIONS.php;
+}
+
 // ── Start Command Detection ─────────────────────────────────────────────────
 
 async function detectStartCommand(
@@ -402,6 +463,36 @@ async function detectStartCommand(
     }
   }
 
+  // PHP projects
+  if (runtimes.php) {
+    // Laravel
+    if (await fs.pathExists(path.join(dir, 'artisan'))) {
+      return 'php artisan serve';
+    }
+    // Symfony
+    if (await fs.pathExists(path.join(dir, 'bin', 'console'))) {
+      return 'php bin/console server:start';
+    }
+    // WordPress
+    if (await fs.pathExists(path.join(dir, 'wp-config.php'))) {
+      return 'php -S localhost:8000';
+    }
+    // Common entry points
+    for (const entry of ['index.php', 'public/index.php', 'src/index.php']) {
+      if (await fs.pathExists(path.join(dir, entry))) {
+        const docRoot = entry.includes('/') ? path.dirname(entry) : '.';
+        return `php -S localhost:8000 -t ${docRoot}`;
+      }
+    }
+    // Fallback: single .php file
+    const files = await fs.readdir(dir).catch(() => []);
+    const phpFiles = files.filter(f => f.endsWith('.php'));
+    if (phpFiles.length === 1) {
+      return `php "${phpFiles[0]}"`;
+    }
+    return 'php -S localhost:8000';
+  }
+
   return undefined;
 }
 
@@ -429,6 +520,9 @@ function extractVersionFromRange(range: string, runtime: string): string {
     if (parts.length === 1) return expandMajorNodeVersion(parts[0]);
     if (parts.length === 2) return version + '.0';
   } else if (runtime === 'python') {
+    if (parts.length === 1) return version + '.0.0';
+    if (parts.length === 2) return version + '.0';
+  } else if (runtime === 'php') {
     if (parts.length === 1) return version + '.0.0';
     if (parts.length === 2) return version + '.0';
   }

@@ -124,11 +124,11 @@ describe('formatBytes', () => {
 // ── isSupportedRuntime ───────────────────────────────────────────────────────
 
 describe('isSupportedRuntime', () => {
-  it.each(['node', 'python', 'java', 'go'])('accepts %s', (runtime) => {
+  it.each(['node', 'python', 'java', 'go', 'php'])('accepts %s', (runtime) => {
     expect(isSupportedRuntime(runtime)).toBe(true);
   });
 
-  it.each(['ruby', 'dotnet', 'rust', 'php', '', 'NODE', 'Python'])(
+  it.each(['ruby', 'dotnet', 'rust', '', 'NODE', 'Python'])(
     'rejects %s',
     (runtime) => {
       expect(isSupportedRuntime(runtime)).toBe(false);
@@ -182,6 +182,10 @@ describe('runtimeBinDir', () => {
 
   it('returns a path containing "bin" for java', () => {
     expect(runtimeBinDir('java', '21', base)).toContain('bin');
+  });
+
+  it('returns a non-empty string for php', () => {
+    expect(runtimeBinDir('php', '8.3.0', base)).toBeTruthy();
   });
 
   it('is nested inside runtimeDir', () => {

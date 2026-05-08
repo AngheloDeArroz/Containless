@@ -41,23 +41,63 @@ export async function resolvePhpDownloadUrl(version: string): Promise<string> {
  */
 async function resolveWindowsPhpUrl(version: string): Promise<string> {
   const { default: axios } = await import('axios');
+  const majorMinor = getMajorMinor(version);
 
+  // Query the official releases.json to discover the actual available version
+  // for the requested major.minor (e.g. user says 8.3.0, actual is 8.3.31).
+  let releases: Record<string, any>;
+  try {
+    const res = await axios.get(
+      'https://windows.php.net/downloads/releases/releases.json',
+      {
+        timeout: 15000,
+        headers: { 'User-Agent': 'Containless-CLI' },
+      }
+    );
+    releases = res.data;
+  } catch (err: any) {
+    throw new Error(
+      `Failed to fetch PHP releases from windows.php.net: ${err.message}`
+    );
+  }
+
+  const entry = releases[majorMinor];
+  if (!entry || !entry.version) {
+    throw new Error(
+      `PHP ${majorMinor}.x is not available on windows.php.net. ` +
+      `Available series: ${Object.keys(releases).join(', ')}. ` +
+      `Check https://windows.php.net/downloads/releases/`
+    );
+  }
+
+  const realVersion: string = entry.version; // e.g. "8.3.31"
+
+  // Find the NTS x64 key (nts-vs16-x64 or nts-vs17-x64)
+  const ntsKey = Object.keys(entry).find(
+    k => k.startsWith('nts-') && k.endsWith('-x64')
+  );
+
+  if (ntsKey && entry[ntsKey]?.zip?.path) {
+    return `https://windows.php.net/downloads/releases/${entry[ntsKey].zip.path}`;
+  }
+
+  // Fallback: try constructing the URL with the real version
   for (const vs of ['vs17', 'vs16']) {
-    const url = `https://windows.php.net/downloads/releases/php-${version}-nts-Win32-${vs}-x64.zip`;
+    const url = `https://windows.php.net/downloads/releases/php-${realVersion}-nts-Win32-${vs}-x64.zip`;
     try {
-      const res = await axios.head(url, {
+      const headRes = await axios.head(url, {
         timeout: 10000,
         maxRedirects: 5,
         headers: { 'User-Agent': 'Containless-CLI' },
       });
-      if (res.status === 200) return url;
+      if (headRes.status === 200) return url;
     } catch {
       // Try next VS version
     }
   }
 
   throw new Error(
-    `Could not find PHP ${version} NTS binary for Windows. ` +
+    `Could not find PHP ${realVersion} NTS binary for Windows. ` +
     `Check available versions at https://windows.php.net/downloads/releases/`
   );
 }

@@ -118,7 +118,7 @@ program
         logError('No runtimes detected in this project.');
         logInfo(
           'Make sure your project has recognizable config files ' +
-          '(package.json, go.mod, pyproject.toml, pom.xml, etc.)'
+          '(package.json, go.mod, pyproject.toml, pom.xml, composer.json, etc.)'
         );
         return;
       }

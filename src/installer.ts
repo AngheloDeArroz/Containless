@@ -106,6 +106,10 @@ export async function installRuntime(
   if (name === 'python') {
     await setupPythonVenv(binPath, cwd);
   }
+
+  if (name === 'php') {
+    await setupPhpComposer(binPath, cwd);
+  }
 }
 
 // ── Python Venv Setup ───────────────────────────────────────────────────────
@@ -130,6 +134,39 @@ async function setupPythonVenv(pythonExecutable: string, cwd?: string): Promise<
     } catch (err: any) {
       logError(`Failed to install requirements: ${err.message}`);
     }
+  }
+}
+
+// ── PHP Composer Setup ──────────────────────────────────────────────────────
+
+async function setupPhpComposer(phpExecutable: string, cwd?: string): Promise<void> {
+  const composerJsonPath = path.resolve(cwd || process.cwd(), 'composer.json');
+  if (!(await fs.pathExists(composerJsonPath))) return;
+
+  // Download Composer PHAR if not already cached
+  const cache = cacheDir(cwd);
+  await fs.ensureDir(cache);
+  const composerPhar = path.join(cache, 'composer.phar');
+
+  if (!(await fs.pathExists(composerPhar))) {
+    logInfo('Downloading Composer...');
+    const tempPhar = composerPhar + '.download';
+    try {
+      await downloadFile('https://getcomposer.org/composer-stable.phar', tempPhar, 'composer', 'stable');
+      await fs.rename(tempPhar, composerPhar);
+    } catch (err) {
+      await fs.remove(tempPhar).catch(() => {});
+      logWarn('Failed to download Composer. Skipping dependency installation.');
+      return;
+    }
+  }
+
+  logInfo('Found composer.json, checking dependencies...');
+  try {
+    await runProcess(phpExecutable, [composerPhar, 'install', '--no-interaction'], cwd);
+    logSuccess('Composer dependencies installed successfully.');
+  } catch (err: any) {
+    logError(`Failed to install Composer dependencies: ${err.message}`);
   }
 }
 
@@ -171,7 +208,7 @@ async function downloadFile(
     },
   });
 
-  const totalLength = parseInt(response.headers['content-length'] || '0', 10);
+  const totalLength = parseInt(String(response.headers['content-length'] ?? '0'), 10);
 
   const bar = new cliProgress.SingleBar(
     {
@@ -234,7 +271,7 @@ async function extractArchive(
   stripLevel: number
 ): Promise<void> {
   if (archivePath.endsWith('.zip')) {
-    await extractZip(archivePath, destDir);
+    await extractZip(archivePath, destDir, stripLevel);
   } else {
     await extractTarGz(archivePath, destDir, stripLevel);
   }
@@ -252,7 +289,7 @@ async function extractTarGz(
   });
 }
 
-async function extractZip(archivePath: string, destDir: string): Promise<void> {
+async function extractZip(archivePath: string, destDir: string, stripLevel: number = 1): Promise<void> {
   const unzipper = await import('unzipper');
   const zip = fs.createReadStream(archivePath).pipe(unzipper.Parse({ forceStream: true }));
   const resolvedDest = path.resolve(destDir);
@@ -261,9 +298,9 @@ async function extractZip(archivePath: string, destDir: string): Promise<void> {
     const entryPath: string = entry.path;
     const type: string = entry.type;
 
-    // Strip the top-level directory from the path
+    // Strip the specified number of leading directory components
     const parts = entryPath.split(/[/\\]/);
-    const stripped = parts.slice(1).join(path.sep);
+    const stripped = parts.slice(stripLevel).join(path.sep);
 
     if (!stripped) {
       entry.autodrain();

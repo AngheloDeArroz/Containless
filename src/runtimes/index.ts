@@ -3,6 +3,7 @@ import { getNodeDownloadUrl, getNodeArchiveName, getNodeBinaryName, NODE_STRIP_L
 import { getPythonDownloadUrl, getPythonArchiveName, getPythonBinaryName, PYTHON_STRIP_LEVEL, resolvePythonDownloadUrl } from './python';
 import { getJavaDownloadUrl, getJavaArchiveName, getJavaBinaryName, JAVA_STRIP_LEVEL } from './java';
 import { getGoDownloadUrl, getGoArchiveName, getGoBinaryName, GO_STRIP_LEVEL } from './go';
+import { getPhpDownloadUrl, getPhpArchiveName, getPhpBinaryName, PHP_STRIP_LEVEL, resolvePhpDownloadUrl } from './php';
 
 // ── Runtime Info ────────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ export interface RuntimeInfo {
 export function getRuntimeInfo(name: string, version: string): RuntimeInfo {
   if (!isSupportedRuntime(name)) {
     throw new Error(
-      `Unsupported runtime: "${name}". Supported runtimes: node, python, java, go`
+      `Unsupported runtime: "${name}". Supported runtimes: node, python, java, go, php`
     );
   }
 
@@ -55,12 +56,23 @@ export function getRuntimeInfo(name: string, version: string): RuntimeInfo {
         stripLevel: GO_STRIP_LEVEL,
         needsResolve: false,
       };
+    case 'php':
+      return {
+        downloadUrl: getPhpDownloadUrl(version),
+        archiveName: getPhpArchiveName(version),
+        binaryName: getPhpBinaryName(),
+        stripLevel: PHP_STRIP_LEVEL,
+        needsResolve: true,
+      };
   }
 }
 
 export async function resolveDownloadUrl(name: string, version: string, info: RuntimeInfo): Promise<string> {
   if (name === 'python' && info.needsResolve) {
     return resolvePythonDownloadUrl(version);
+  }
+  if (name === 'php' && info.needsResolve) {
+    return resolvePhpDownloadUrl(version);
   }
   return info.downloadUrl;
 }

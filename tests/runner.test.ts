@@ -189,4 +189,8 @@ describe('runCommand — allowed executables are not blocked by security checks'
   it('does not block "npx ts-node index.ts"', async () => {
     expect(await isBlockedBySecurity('npx ts-node index.ts')).toBe(false);
   });
+
+  it('does not block "php artisan serve"', async () => {
+    expect(await isBlockedBySecurity('php artisan serve')).toBe(false);
+  });
 });

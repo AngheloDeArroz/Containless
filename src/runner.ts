@@ -28,6 +28,7 @@ const ALLOWED_EXECUTABLES = new Set([
   'go',                                                  // Go
   'java', 'javac', 'mvn', 'mvnw', 'gradle', 'gradlew', // Java ecosystem
   'ts-node',                                             // TypeScript
+  'php',                                                 // PHP
 ]);
 
 /**

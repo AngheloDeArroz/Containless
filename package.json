@@ -15,7 +15,9 @@
     "clean:all": "npm run clean && cd vscode-extension && rimraf dist node_modules",
     "prepublishOnly": "npm run build",
     "lint": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "npm run test:cli && npm run test:ext",
+    "test:cli": "vitest run",
+    "test:ext": "npm run test --prefix vscode-extension",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },

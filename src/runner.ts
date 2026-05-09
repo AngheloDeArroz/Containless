@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import chalk from 'chalk';
-import { runtimeBinDir, pathSeparator, logInfo, logError, logWarn } from './utils';
+import { runtimeBinDir, pathSeparator, isWindows, logInfo, logError, logWarn } from './utils';
 
 // ── Run Command ─────────────────────────────────────────────────────────────
 
@@ -97,6 +97,17 @@ export async function runCommand(opts: RunOptions): Promise<number> {
 
   const injectedPath = binPaths.join(sep) + sep + (process.env.PATH || '');
 
+  // Build runtime-specific extra environment variables.
+  // PHP_BINARY is read by Laravel's artisan serve command to locate the runtime
+  // for the built-in web-server worker process it spawns internally. Without this,
+  // the worker falls back to the system PHP (or fails if PHP is not globally installed).
+  const extraEnv: Record<string, string> = {};
+  if (runtimes.php) {
+    const phpBinDir = runtimeBinDir('php', runtimes.php, workDir);
+    const phpExe = path.join(phpBinDir, isWindows() ? 'php.exe' : 'php');
+    extraEnv['PHP_BINARY'] = phpExe;
+  }
+
   logInfo(`Running: ${chalk.bold(command)}`);
   logInfo(`With runtimes: ${Object.entries(runtimes).map(([n, v]) => `${n}@${v}`).join(', ')}`);
   console.log(''); // blank line before output
@@ -113,11 +124,23 @@ export async function runCommand(opts: RunOptions): Promise<number> {
   // Security: Validate the executable against the allowlist
   validateExecutable(executable);
 
+  // On Windows, Node.js CLI wrappers (npm, npx, yarn, pnpm, bun, ts-node) are
+  // installed as .cmd scripts. spawn() with shell:false searches for a file
+  // named exactly 'npm' — which doesn't exist; the real file is 'npm.cmd'.
+  // Appending .cmd lets us keep shell:false (and its security guarantees) while
+  // correctly resolving the wrapper on Windows.
+  const WIN_CMD_WRAPPERS = new Set(['npm', 'npx', 'yarn', 'pnpm', 'bun', 'ts-node']);
+  const resolvedExecutable =
+    isWindows() && WIN_CMD_WRAPPERS.has(executable.toLowerCase())
+      ? executable + '.cmd'
+      : executable;
+
   return new Promise<number>((resolve) => {
-    const child = spawn(executable, args, {
+    const child = spawn(resolvedExecutable, args, {
       env: {
         ...process.env,
         PATH: injectedPath,
+        ...extraEnv,
       },
       stdio: 'inherit',
       cwd: workDir,

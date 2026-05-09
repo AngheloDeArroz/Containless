@@ -31,7 +31,7 @@ export class RuntimeDetector {
       const entries = fs.readdirSync(this.runtimesDir);
 
       for (const entry of entries) {
-        const match = entry.match(/^(node|python|java|go)-(.+)$/);
+        const match = entry.match(/^(node|python|java|go|php)-(.+)$/);
         if (match) {
           const [, name, version] = match;
           const fullPath = path.join(this.runtimesDir, entry);
@@ -76,6 +76,10 @@ export class RuntimeDetector {
         // Go bin path (always has bin subdirectory)
         return path.join(runtimePath, 'bin');
 
+      case 'php':
+        // PHP archives extract flat (PHP_STRIP_LEVEL=0), binary is at the root
+        return runtimePath;
+
       default:
         return path.join(runtimePath, 'bin');
     }
@@ -100,6 +104,9 @@ export class RuntimeDetector {
 
       case 'go':
         return path.join(binPath, isWindows ? 'go.exe' : 'go');
+
+      case 'php':
+        return path.join(binPath, isWindows ? 'php.exe' : 'php');
 
       default:
         return path.join(binPath, runtime);

@@ -372,6 +372,24 @@ async function detectStartCommand(
   dir: string,
   runtimes: Record<string, string>
 ): Promise<string | undefined> {
+  // ── PHP framework priority check ─────────────────────────────────────────
+  // Laravel projects always have a package.json (for Vite assets). Without this
+  // early check, Node detection runs first and picks "npm run dev" instead of
+  // "php artisan serve". PHP framework start commands must win over Node scripts.
+  if (runtimes.php) {
+    if (await fs.pathExists(path.join(dir, 'artisan'))) {
+      // Use php -S directly instead of `php artisan serve`.
+      // artisan serve spawns a second PHP process via Symfony Process / cmd.exe on
+      // Windows, and that grandchild's socket() call fails with an untranslatable
+      // Winsock error (reason: ?). A direct -S invocation is a single spawn and
+      // behaves identically — Laravel's public/index.php is the front controller.
+      return 'php -S 127.0.0.1:8000 -t public';
+    }
+    if (await fs.pathExists(path.join(dir, 'bin', 'console'))) {
+      return 'php bin/console server:start';
+    }
+  }
+
   // Node.js projects
   if (runtimes.node) {
     const pkgPath = path.join(dir, 'package.json');
@@ -463,25 +481,17 @@ async function detectStartCommand(
     }
   }
 
-  // PHP projects
+  // PHP projects (fallbacks — framework priority already handled above)
   if (runtimes.php) {
-    // Laravel
-    if (await fs.pathExists(path.join(dir, 'artisan'))) {
-      return 'php artisan serve';
-    }
-    // Symfony
-    if (await fs.pathExists(path.join(dir, 'bin', 'console'))) {
-      return 'php bin/console server:start';
-    }
     // WordPress
     if (await fs.pathExists(path.join(dir, 'wp-config.php'))) {
-      return 'php -S localhost:8000';
+      return 'php -S 127.0.0.1:8000';
     }
     // Common entry points
     for (const entry of ['index.php', 'public/index.php', 'src/index.php']) {
       if (await fs.pathExists(path.join(dir, entry))) {
         const docRoot = entry.includes('/') ? path.dirname(entry) : '.';
-        return `php -S localhost:8000 -t ${docRoot}`;
+        return `php -S 127.0.0.1:8000 -t ${docRoot}`;
       }
     }
     // Fallback: single .php file
@@ -490,7 +500,7 @@ async function detectStartCommand(
     if (phpFiles.length === 1) {
       return `php "${phpFiles[0]}"`;
     }
-    return 'php -S localhost:8000';
+    return 'php -S 127.0.0.1:8000';
   }
 
   return undefined;

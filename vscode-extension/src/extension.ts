@@ -103,7 +103,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
       // Pick a runtime
       const runtime = await vscode.window.showQuickPick(
-        ['node', 'python', 'java', 'go'],
+        ['node', 'python', 'java', 'go', 'php'],
         {
           placeHolder: 'Select a runtime to install',
           title: 'Containless: Install Runtime',
@@ -333,6 +333,7 @@ function getVersionPlaceholder(runtime: string): string {
     case 'python': return 'e.g. 3.11.0, 3.12.0';
     case 'java': return 'e.g. 21, 17';
     case 'go': return 'e.g. 1.21.0, 1.22.0';
+    case 'php': return 'e.g. 8.3.0, 8.2.0';
     default: return 'e.g. 1.0.0';
   }
 }

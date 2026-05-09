@@ -12,6 +12,7 @@ const EXT_PYTHON  = 'ms-python.python';
 const EXT_ESLINT  = 'dbaeumer.vscode-eslint';
 const EXT_JAVA    = 'redhat.java';
 const EXT_GO      = 'golang.go';
+const EXT_PHP     = 'bmewburn.vscode-intelephense-client';
 
 export class SettingsManager {
   private workspaceRoot: string;
@@ -46,15 +47,13 @@ export class SettingsManager {
     // Configure Node.js
     if (runtimes.node) {
       const nodeExe = this.detector.getRuntimeExecutable('node', runtimes.node);
-      const nodeBinDir = this.detector.getRuntimeBinPath('node', runtimes.node);
 
       // Point ESLint to use the local Node.js runtime (only if ESLint extension is installed)
       if (this.isExtensionInstalled(EXT_ESLINT)) {
         await config.update('eslint.runtime', nodeExe, vscode.ConfigurationTarget.Workspace);
       }
-
-      // Set the Node.js path for extensions that look for it
-      await config.update('npm.binPath', nodeBinDir, vscode.ConfigurationTarget.Workspace);
+      // Note: Node.js PATH is injected into the integrated terminal via updateTerminalPath(),
+      // which is the correct mechanism. npm.binPath is not a registered VS Code configuration.
     }
 
     // Configure Java (only if the Java extension is installed)
@@ -80,6 +79,14 @@ export class SettingsManager {
       await config.update('go.goroot', goRoot, vscode.ConfigurationTarget.Workspace);
       // go.alternateTools lets the Go extension find the exact binary
       await config.update('go.alternateTools', { go: goExe }, vscode.ConfigurationTarget.Workspace);
+    }
+
+    // Configure PHP (only if the Intelephense extension is installed)
+    if (runtimes.php && this.isExtensionInstalled(EXT_PHP)) {
+      const phpExe = this.detector.getRuntimeExecutable('php', runtimes.php);
+      // Intelephense uses php.executablePath to locate the PHP binary for diagnostics
+      await config.update('php.validate.executablePath', phpExe, vscode.ConfigurationTarget.Workspace);
+      await config.update('intelephense.environment.phpVersion', runtimes.php, vscode.ConfigurationTarget.Workspace);
     }
 
     // Update terminal PATH to include all runtime bin directories
@@ -137,6 +144,18 @@ export class SettingsManager {
 
       // ${env:PATH} is a VS Code terminal variable that resolves to the current PATH
       currentEnv['PATH'] = binPaths.join(pathSeparator) + pathSeparator + '${env:PATH}';
+
+      // PHP_BINARY must be set explicitly so that `php artisan serve` spawns its
+      // built-in web-server worker with the sandboxed PHP, not a globally installed
+      // one. Laravel reads this env var when forking the server worker process.
+      // This is independent of any editor extension (Intelephense, etc.).
+      if (runtimes.php) {
+        currentEnv['PHP_BINARY'] = this.detector.getRuntimeExecutable('php', runtimes.php);
+      } else {
+        // PHP was not detected this cycle — clear any stale value
+        delete currentEnv['PHP_BINARY'];
+      }
+
       await config.update(platformKey, currentEnv, vscode.ConfigurationTarget.Workspace);
     }
   }
@@ -186,8 +205,7 @@ export class SettingsManager {
       await config.update('python.defaultInterpreterPath', undefined, vscode.ConfigurationTarget.Workspace);
     }
 
-    // Reset Node.js
-    await config.update('npm.binPath', undefined, vscode.ConfigurationTarget.Workspace);
+    // Reset Node.js (ESLint only — npm.binPath is not a registered VS Code configuration)
     if (this.isExtensionInstalled(EXT_ESLINT)) {
       await config.update('eslint.runtime', undefined, vscode.ConfigurationTarget.Workspace);
     }
@@ -203,12 +221,19 @@ export class SettingsManager {
       await config.update('go.alternateTools', undefined, vscode.ConfigurationTarget.Workspace);
     }
 
-    // Reset terminal PATH for all platforms
+    // Reset PHP (only if the Intelephense extension is installed)
+    if (this.isExtensionInstalled(EXT_PHP)) {
+      await config.update('php.validate.executablePath', undefined, vscode.ConfigurationTarget.Workspace);
+      await config.update('intelephense.environment.phpVersion', undefined, vscode.ConfigurationTarget.Workspace);
+    }
+
+    // Reset terminal PATH and PHP_BINARY for all platforms
     const envConfig = vscode.workspace.getConfiguration('terminal.integrated.env', vscode.Uri.file(this.workspaceRoot));
     for (const platformKey of ['windows', 'linux', 'osx']) {
       const currentEnv = envConfig.get<Record<string, string>>(platformKey);
-      if (currentEnv && currentEnv['PATH']) {
+      if (currentEnv && (currentEnv['PATH'] || currentEnv['PHP_BINARY'])) {
         delete currentEnv['PATH'];
+        delete currentEnv['PHP_BINARY'];
         const newValue = Object.keys(currentEnv).length > 0 ? currentEnv : undefined;
         await envConfig.update(platformKey, newValue, vscode.ConfigurationTarget.Workspace);
       }

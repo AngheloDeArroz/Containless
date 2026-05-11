@@ -1,6 +1,6 @@
 # Containless
 
-Run projects instantly without the hassle of installing system dependencies, managing language versions, or learning Docker. Containless automatically provisions fully isolated, project-local runtimes for Node.js, Python, Java, and Go.
+Run projects instantly without the hassle of installing system dependencies, managing language versions, or learning Docker. Containless automatically provisions fully isolated, project-local runtimes for Node.js, Python, Java, Go, and PHP.
 
 ## Features
 
@@ -13,6 +13,7 @@ Run projects instantly without the hassle of installing system dependencies, man
 - **Node.js** — Configures Node.js for ESLint, npm, and the terminal
 - **Java** — Sets `JAVA_HOME` for the Java extension pack
 - **Go** — Sets `GOROOT` and alternate tools for the Go extension
+- **PHP** — Configures PHP executable for linting and debugging
 - **Live reload** — Watches `containless.json` and reconfigures automatically on changes
 
 ## How It Works
@@ -59,6 +60,9 @@ When a `containless.json` is present, a status bar item appears at the bottom of
 ### Go
 - `go.goroot` → local Go SDK root
 - `go.alternateTools` → local Go binary
+
+### PHP
+- `php.executablePath` → local PHP executable
 
 ### Terminal
 - `terminal.integrated.env.{platform}.PATH` → prepended with all local runtime bin directories

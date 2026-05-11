@@ -6,7 +6,7 @@
 
 **Docker-like runtime isolation — without the container.**
 
-Install and run Node.js, Python, Java, and Go locally inside your project folder, completely isolated from global installs.
+Install and run Node.js, Python, Java, Go, and PHP locally inside your project folder, completely isolated from global installs.
 
 [![npm version](https://img.shields.io/npm/v/containless.svg)](https://www.npmjs.com/package/containless)
 [![license](https://img.shields.io/npm/l/containless.svg)](https://github.com/user/containless/blob/main/LICENSE)
@@ -56,6 +56,7 @@ That's it! Containless will **automatically scan** your project for config files
 | **Python** | `.python-version`, `pyproject.toml`, `requirements.txt`, `setup.py` |
 | **Go**     | `go.mod`                                                   |
 | **Java**   | `.java-version`, `pom.xml`, `build.gradle`, `build.gradle.kts` |
+| **PHP**    | `.php-version`, `composer.json` (require.php)              |
 
 ### Manual setup (optional)
 

@@ -7,9 +7,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: startsWith(github.event.release.tag_name, 'containless-extension-v')
 
     permissions:
-      contents: write  # Needed to upload .vsix to GitHub Release assets
+      contents: write  # Needed to create release and upload .vsix
 
     defaults:
       run:
@@ -37,7 +38,6 @@ jobs:
         run: vsce package --out containless.vsix
 
       - name: Upload .vsix to GitHub Release
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: ./vscode-extension/containless.vsix

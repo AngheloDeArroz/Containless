@@ -291,6 +291,102 @@ describe('Start command detection', () => {
   });
 });
 
+// ── Ruby detection ───────────────────────────────────────────────────────────
+
+describe('Ruby detection', () => {
+  let dir: string;
+  beforeEach(async () => { dir = await makeTmpDir(); });
+  afterEach(async () => { await fs.rm(dir, { recursive: true, force: true }); });
+
+  it('reads version from .ruby-version (full semver)', async () => {
+    await fs.writeFile(path.join(dir, '.ruby-version'), '3.3.0\n');
+    const { runtimes, detections } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.3.0');
+    expect(detections.find(d => d.runtime === 'ruby')?.source).toBe('.ruby-version');
+  });
+
+  it('appends .0 to major.minor in .ruby-version', async () => {
+    await fs.writeFile(path.join(dir, '.ruby-version'), '3.2\n');
+    const { runtimes } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.2.0');
+  });
+
+  it('strips ruby- prefix in .ruby-version (rbenv format)', async () => {
+    await fs.writeFile(path.join(dir, '.ruby-version'), 'ruby-3.1.4\n');
+    const { runtimes } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.1.4');
+  });
+
+  it('reads exact version from Gemfile ruby directive (double quotes)', async () => {
+    await fs.writeFile(path.join(dir, 'Gemfile'), 'source "https://rubygems.org"\nruby "3.3.0"\n');
+    const { runtimes, detections } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.3.0');
+    expect(detections.find(d => d.runtime === 'ruby')?.source).toBe('Gemfile (ruby directive)');
+  });
+
+  it('reads pessimistic version from Gemfile ruby directive', async () => {
+    await fs.writeFile(path.join(dir, 'Gemfile'), 'source "https://rubygems.org"\nruby "~> 3.2"\n');
+    const { runtimes } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.2.0');
+  });
+
+  it('uses default when Gemfile has no ruby directive', async () => {
+    await fs.writeFile(path.join(dir, 'Gemfile'), 'source "https://rubygems.org"\ngem "sinatra"\n');
+    const { runtimes, detections } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.3.0');
+    expect(detections.find(d => d.runtime === 'ruby')?.source).toBe('Gemfile (detected)');
+  });
+
+  it('detects ruby from config.ru', async () => {
+    await fs.writeFile(path.join(dir, 'config.ru'), 'run Rack::URLMap.new');
+    const { runtimes, detections } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.3.0');
+    expect(detections.find(d => d.runtime === 'ruby')?.source).toBe('config.ru (detected)');
+  });
+
+  it('detects ruby from a lone .rb file', async () => {
+    await fs.writeFile(path.join(dir, 'app.rb'), '');
+    const { runtimes, detections } = await scanProject(dir);
+    expect(runtimes.ruby).toBe('3.3.0');
+    expect(detections.find(d => d.runtime === 'ruby')?.source).toContain('.rb');
+  });
+
+  it('returns no ruby runtime for an empty directory', async () => {
+    const { runtimes } = await scanProject(dir);
+    expect(runtimes.ruby).toBeUndefined();
+  });
+});
+
+// ── Ruby start command detection ──────────────────────────────────────────────
+
+describe('Ruby start command detection', () => {
+  let dir: string;
+  beforeEach(async () => { dir = await makeTmpDir(); });
+  afterEach(async () => { await fs.rm(dir, { recursive: true, force: true }); });
+
+  it('detects Rails start command from bin/rails', async () => {
+    await fs.writeFile(path.join(dir, '.ruby-version'), '3.3.0');
+    await fs.ensureDir(path.join(dir, 'bin'));
+    await fs.writeFile(path.join(dir, 'bin', 'rails'), '');
+    const { start } = await scanProject(dir);
+    expect(start).toBe('bundle exec rails server');
+  });
+
+  it('detects Rack start command from config.ru', async () => {
+    await fs.writeFile(path.join(dir, '.ruby-version'), '3.3.0');
+    await fs.writeFile(path.join(dir, 'config.ru'), '');
+    const { start } = await scanProject(dir);
+    expect(start).toBe('bundle exec rackup');
+  });
+
+  it('detects single .rb file start command', async () => {
+    await fs.writeFile(path.join(dir, '.ruby-version'), '3.3.0');
+    await fs.writeFile(path.join(dir, 'app.rb'), '');
+    const { start } = await scanProject(dir);
+    expect(start).toBe('ruby "app.rb"');
+  });
+});
+
 // ── Multi-runtime project ────────────────────────────────────────────────────
 
 describe('Multi-runtime project', () => {

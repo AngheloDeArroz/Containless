@@ -88,6 +88,12 @@ export function runtimeBinDir(name: string, version: string, cwd?: string): stri
     return base;
   }
 
+  if (name === 'ruby') {
+    // rubyinstaller2 (Windows) and ruby-builder (Linux/macOS) both place the
+    // ruby binary inside a bin/ subdirectory inside the archive root.
+    return path.join(base, 'bin');
+  }
+
   return path.join(base, 'bin');
 }
 
@@ -198,7 +204,7 @@ export function formatBytes(bytes: number): string {
 
 // ── Supported Runtimes ──────────────────────────────────────────────────────
 
-export const SUPPORTED_RUNTIMES = ['node', 'python', 'java', 'go', 'php'] as const;
+export const SUPPORTED_RUNTIMES = ['node', 'python', 'java', 'go', 'php', 'ruby'] as const;
 export type RuntimeName = (typeof SUPPORTED_RUNTIMES)[number];
 
 export function isSupportedRuntime(name: string): name is RuntimeName {

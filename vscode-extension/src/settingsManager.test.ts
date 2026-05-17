@@ -123,6 +123,29 @@ describe('SettingsManager', () => {
       const terminalEnv = _testMocks.getConfig('terminal.integrated.env.windows');
       expect(terminalEnv.PHP_BINARY).toContain('php.exe');
     });
+
+    it('configures Ruby LSP when installed', async () => {
+      _testMocks.installExtension('Shopify.ruby-lsp');
+      Object.defineProperty(process, 'platform', { value: 'linux' });
+
+      await settingsManager.configureRuntimes({ ruby: '3.3.0' });
+
+      expect(_testMocks.getConfig('rubyLsp.rubyExecutablePath')).toContain(path.join('ruby-3.3.0', 'bin', 'ruby'));
+    });
+
+    it('sets GEM_HOME and GEM_PATH in terminal even if Ruby LSP is not installed', async () => {
+      Object.defineProperty(process, 'platform', { value: 'linux' });
+
+      await settingsManager.configureRuntimes({ ruby: '3.3.0' });
+
+      // Extension setting should be absent
+      expect(_testMocks.getConfig('rubyLsp.rubyExecutablePath')).toBeUndefined();
+
+      // But terminal must have GEM_HOME / GEM_PATH so bundler and gem work
+      const terminalEnv = _testMocks.getConfig('terminal.integrated.env.linux');
+      expect(terminalEnv.GEM_HOME).toContain('ruby-3.3.0');
+      expect(terminalEnv.GEM_PATH).toContain('ruby-3.3.0');
+    });
   });
 
   describe('resetToGlobal', () => {
@@ -132,10 +155,11 @@ describe('SettingsManager', () => {
       _testMocks.installExtension('redhat.java');
       _testMocks.installExtension('golang.go');
       _testMocks.installExtension('bmewburn.vscode-intelephense-client');
-      
+      _testMocks.installExtension('Shopify.ruby-lsp');
+
       // Pre-populate some configs
-      _testMocks.setConfig('terminal.integrated.env.windows', { PATH: 'some-path', PHP_BINARY: 'some-php' });
-      _testMocks.setConfig('terminal.integrated.env.linux', { PATH: 'some-path' });
+      _testMocks.setConfig('terminal.integrated.env.windows', { PATH: 'some-path', PHP_BINARY: 'some-php', GEM_HOME: 'some-gem', GEM_PATH: 'some-gem' });
+      _testMocks.setConfig('terminal.integrated.env.linux', { PATH: 'some-path', GEM_HOME: 'some-gem', GEM_PATH: 'some-gem' });
 
       await settingsManager.resetToGlobal();
 
@@ -144,7 +168,8 @@ describe('SettingsManager', () => {
       expect(_testMocks.getConfig('java.jdt.ls.java.home')).toBeUndefined();
       expect(_testMocks.getConfig('go.goroot')).toBeUndefined();
       expect(_testMocks.getConfig('php.validate.executablePath')).toBeUndefined();
-      
+      expect(_testMocks.getConfig('rubyLsp.rubyExecutablePath')).toBeUndefined();
+
       // Verify terminal resets
       expect(_testMocks.getConfig('terminal.integrated.env.windows')).toBeUndefined();
       expect(_testMocks.getConfig('terminal.integrated.env.linux')).toBeUndefined();

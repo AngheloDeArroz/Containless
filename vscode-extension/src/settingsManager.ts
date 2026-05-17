@@ -13,6 +13,7 @@ const EXT_ESLINT  = 'dbaeumer.vscode-eslint';
 const EXT_JAVA    = 'redhat.java';
 const EXT_GO      = 'golang.go';
 const EXT_PHP     = 'bmewburn.vscode-intelephense-client';
+const EXT_RUBY    = 'Shopify.ruby-lsp';
 
 export class SettingsManager {
   private workspaceRoot: string;
@@ -89,6 +90,13 @@ export class SettingsManager {
       await config.update('intelephense.environment.phpVersion', runtimes.php, vscode.ConfigurationTarget.Workspace);
     }
 
+    // Configure Ruby (only if the Ruby LSP extension is installed)
+    if (runtimes.ruby && this.isExtensionInstalled(EXT_RUBY)) {
+      const rubyExe = this.detector.getRuntimeExecutable('ruby', runtimes.ruby);
+      // Ruby LSP uses rubyLsp.rubyExecutablePath to locate the ruby binary
+      await config.update('rubyLsp.rubyExecutablePath', rubyExe, vscode.ConfigurationTarget.Workspace);
+    }
+
     // Update terminal PATH to include all runtime bin directories
     await this.updateTerminalPath(runtimes);
   }
@@ -154,6 +162,18 @@ export class SettingsManager {
       } else {
         // PHP was not detected this cycle — clear any stale value
         delete currentEnv['PHP_BINARY'];
+      }
+
+      // GEM_HOME / GEM_PATH must point to the Containless-managed gems directory
+      // so that `bundle exec`, `rails`, and `gem install` all use the sandbox.
+      if (runtimes.ruby) {
+        const rubyRuntimePath = path.join(this.workspaceRoot, '.containless', 'runtimes', `ruby-${runtimes.ruby}`);
+        const gemHome = path.join(rubyRuntimePath, 'lib', 'ruby', 'gems');
+        currentEnv['GEM_HOME'] = gemHome;
+        currentEnv['GEM_PATH'] = gemHome;
+      } else {
+        delete currentEnv['GEM_HOME'];
+        delete currentEnv['GEM_PATH'];
       }
 
       await config.update(platformKey, currentEnv, vscode.ConfigurationTarget.Workspace);
@@ -227,13 +247,20 @@ export class SettingsManager {
       await config.update('intelephense.environment.phpVersion', undefined, vscode.ConfigurationTarget.Workspace);
     }
 
+    // Reset Ruby (only if the Ruby LSP extension is installed)
+    if (this.isExtensionInstalled(EXT_RUBY)) {
+      await config.update('rubyLsp.rubyExecutablePath', undefined, vscode.ConfigurationTarget.Workspace);
+    }
+
     // Reset terminal PATH and PHP_BINARY for all platforms
     const envConfig = vscode.workspace.getConfiguration('terminal.integrated.env', vscode.Uri.file(this.workspaceRoot));
     for (const platformKey of ['windows', 'linux', 'osx']) {
       const currentEnv = envConfig.get<Record<string, string>>(platformKey);
-      if (currentEnv && (currentEnv['PATH'] || currentEnv['PHP_BINARY'])) {
+      if (currentEnv && (currentEnv['PATH'] || currentEnv['PHP_BINARY'] || currentEnv['GEM_HOME'])) {
         delete currentEnv['PATH'];
         delete currentEnv['PHP_BINARY'];
+        delete currentEnv['GEM_HOME'];
+        delete currentEnv['GEM_PATH'];
         const newValue = Object.keys(currentEnv).length > 0 ? currentEnv : undefined;
         await envConfig.update(platformKey, newValue, vscode.ConfigurationTarget.Workspace);
       }

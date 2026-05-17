@@ -1,7 +1,7 @@
 {
   "name": "containless",
   "displayName": "Containless",
-  "description": "Run projects instantly without installing system dependencies or learning Docker. Automatically provision isolated, project-local runtimes for Node.js, Python, Java, and Go.",
+  "description": "Run projects instantly without installing system dependencies or learning Docker. Automatically provision isolated, project-local runtimes for Node.js, Python, Java, Go, PHP, and Ruby.",
   "version": "0.1.4",
   "publisher": "containless",
   "license": "MIT",
@@ -32,6 +32,8 @@
     "node",
     "java",
     "go",
+    "php",
+    "ruby",
     "containless",
     "isolated",
     "environment",

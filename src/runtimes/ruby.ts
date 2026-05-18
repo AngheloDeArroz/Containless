@@ -98,14 +98,14 @@ async function resolveWindowsRubyUrl(version: string, arch: Arch): Promise<strin
       n.startsWith('rubyinstaller-') &&
       !n.includes('devkit') &&
       n.includes(archStr) &&
-      n.endsWith('.zip')
+      (n.endsWith('.7z') || n.endsWith('.zip'))
     ) {
       return asset.browser_download_url;
     }
   }
 
   throw new Error(
-    `Could not find a slim ZIP asset for Ruby ${version} on Windows. ` +
+    `Could not find a slim 7z/ZIP asset for Ruby ${version} on Windows. ` +
     `Check https://github.com/oneclick/rubyinstaller2/releases`
   );
 }
@@ -199,7 +199,7 @@ async function resolveUnixRubyUrl(version: string, platform: Platform, arch: Arc
 export function getRubyArchiveName(version: string): string {
   const platform = getPlatform();
   const arch = getArch();
-  const ext = isWindows() ? 'zip' : 'tar.gz';
+  const ext = isWindows() ? '7z' : 'tar.gz';
   const os = platform === 'darwin' ? 'macos' : platform === 'win32' ? 'windows' : 'linux';
   const archStr = arch === 'arm64' ? 'arm64' : 'x64';
   return `ruby-${version}-${os}-${archStr}.${ext}`;

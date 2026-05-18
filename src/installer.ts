@@ -395,6 +395,8 @@ async function extractArchive(
 ): Promise<void> {
   if (archivePath.endsWith('.zip')) {
     await extractZip(archivePath, destDir, stripLevel);
+  } else if (archivePath.endsWith('.7z')) {
+    await extract7z(archivePath, destDir, stripLevel);
   } else {
     await extractTarGz(archivePath, destDir, stripLevel);
   }
@@ -410,6 +412,42 @@ async function extractTarGz(
     cwd: destDir,
     strip,
   });
+}
+
+async function extract7z(archivePath: string, destDir: string, stripLevel: number = 1): Promise<void> {
+  const _7z = require('7zip-min');
+  
+  const tempDir = destDir + '_temp';
+  await fs.ensureDir(tempDir);
+  
+  await new Promise<void>((resolve, reject) => {
+    _7z.unpack(archivePath, tempDir, (err: any) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+
+  if (stripLevel > 0) {
+    const entries = await fs.readdir(tempDir, { withFileTypes: true });
+    let sourceDir = tempDir;
+
+    // If stripLevel is 1 and there's exactly 1 top-level directory, move its contents
+    if (stripLevel === 1 && entries.length === 1 && entries[0].isDirectory()) {
+      sourceDir = path.join(tempDir, entries[0].name);
+    }
+
+    const innerFiles = await fs.readdir(sourceDir);
+    for (const file of innerFiles) {
+      await fs.move(path.join(sourceDir, file), path.join(destDir, file), { overwrite: true });
+    }
+  } else {
+    const entries = await fs.readdir(tempDir);
+    for (const file of entries) {
+      await fs.move(path.join(tempDir, file), path.join(destDir, file), { overwrite: true });
+    }
+  }
+  
+  await fs.remove(tempDir);
 }
 
 async function extractZip(archivePath: string, destDir: string, stripLevel: number = 1): Promise<void> {

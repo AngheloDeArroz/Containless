@@ -29,6 +29,7 @@ const ALLOWED_EXECUTABLES = new Set([
   'java', 'javac', 'mvn', 'mvnw', 'gradle', 'gradlew', // Java ecosystem
   'ts-node',                                             // TypeScript
   'php',                                                 // PHP
+  'ruby', 'bundle', 'bundler', 'gem', 'rails', 'rackup', 'rake', 'irb', // Ruby ecosystem
 ]);
 
 /**
@@ -129,11 +130,17 @@ export async function runCommand(opts: RunOptions): Promise<number> {
   // named exactly 'npm' — which doesn't exist; the real file is 'npm.cmd'.
   // Appending .cmd lets us keep shell:false (and its security guarantees) while
   // correctly resolving the wrapper on Windows.
-  const WIN_CMD_WRAPPERS = new Set(['npm', 'npx', 'yarn', 'pnpm', 'bun', 'ts-node']);
-  const resolvedExecutable =
-    isWindows() && WIN_CMD_WRAPPERS.has(executable.toLowerCase())
-      ? executable + '.cmd'
-      : executable;
+  const WIN_CMD_WRAPPERS = new Set(['npm', 'npx', 'yarn', 'pnpm', 'bun', 'ts-node', 'gem']);
+  const WIN_BAT_WRAPPERS = new Set(['bundle', 'bundler', 'rails', 'rackup', 'rake']);
+  let resolvedExecutable = executable;
+  if (isWindows()) {
+    const lowerExec = executable.toLowerCase();
+    if (WIN_CMD_WRAPPERS.has(lowerExec)) {
+      resolvedExecutable += '.cmd';
+    } else if (WIN_BAT_WRAPPERS.has(lowerExec)) {
+      resolvedExecutable += '.bat';
+    }
+  }
 
   return new Promise<number>((resolve) => {
     const child = spawn(resolvedExecutable, args, {

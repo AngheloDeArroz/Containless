@@ -6,7 +6,7 @@
 
 **Docker-like runtime isolation — without the container.**
 
-Install and run Node.js, Python, Java, Go, and PHP locally inside your project folder, completely isolated from global installs.
+Install and run Node.js, Python, Java, Go, PHP, and Ruby locally inside your project folder, completely isolated from global installs.
 
 [![npm version](https://img.shields.io/npm/v/containless.svg)](https://www.npmjs.com/package/containless)
 [![license](https://img.shields.io/npm/l/containless.svg)](https://github.com/user/containless/blob/main/LICENSE)
@@ -57,6 +57,7 @@ That's it! Containless will **automatically scan** your project for config files
 | **Go**     | `go.mod`                                                   |
 | **Java**   | `.java-version`, `pom.xml`, `build.gradle`, `build.gradle.kts` |
 | **PHP**    | `.php-version`, `composer.json` (require.php)              |
+| **Ruby**   | `.ruby-version`, `Gemfile`, `config.ru`                    |
 
 ### Manual setup (optional)
 
@@ -102,6 +103,7 @@ containless install node@18.17.0
 containless install python@3.11.0
 containless install java@21
 containless install go@1.21.0
+containless install ruby@3.2.2
 ```
 
 ### `containless clean`
@@ -151,7 +153,8 @@ Example output:
     "node": "18.17.0",
     "python": "3.11.0",
     "java": "21",
-    "go": "1.21.0"
+    "go": "1.21.0",
+    "ruby": "3.2.2"
   },
   "start": "npm run dev"
 }
@@ -164,7 +167,7 @@ The **Containless VS Code Extension** automatically detects and configures your 
 ### What it does
 
 - 🔍 **Auto-detects** installed Containless runtimes on workspace load
-- ⚙️ **Auto-configures** VS Code settings for Python, Node.js, Java, and Go
+- ⚙️ **Auto-configures** VS Code settings for Python, Node.js, Java, Go, PHP, and Ruby
 - 📝 **Updates PATH** so terminal and tools use local runtimes first
 - 🎯 **Supports** linters, formatters, language servers, and debuggers
 
@@ -225,6 +228,7 @@ Now VS Code's Python extension, linters, formatters, and debugger all use the lo
 | **Python** | [python-build-standalone](https://github.com/indygreg/python-build-standalone) | linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64 |
 | **Java**   | [Adoptium](https://adoptium.net)      | linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64 |
 | **Go**     | [go.dev](https://go.dev)              | linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64 |
+| **Ruby**   | [ruby-builder](https://github.com/ruby/ruby-builder) & [RubyInstaller2](https://github.com/oneclick/rubyinstaller2) | linux-x64, darwin-x64, darwin-arm64, win32-x64 |
 
 ## How It Works
 

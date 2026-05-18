@@ -139,7 +139,7 @@ describe('readConfig — error handling', () => {
   it('calls process.exit for an unsupported runtime name', async () => {
     await fs.writeFile(
       path.join(dir, 'containless.json'),
-      JSON.stringify({ runtime: { ruby: '3.2.0' } })
+      JSON.stringify({ runtime: { dotnet: '8.0.0' } })
     );
     await expect(readConfig(dir)).rejects.toThrow('process.exit');
   });

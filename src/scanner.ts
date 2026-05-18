@@ -25,6 +25,7 @@ const DEFAULT_VERSIONS: Record<string, string> = {
   java: '21',
   go: '1.22.0',
   php: '8.3.0',
+  ruby: '3.3.0',
 };
 
 // ── Main Scanner ────────────────────────────────────────────────────────────
@@ -63,6 +64,12 @@ export async function scanProject(cwd?: string): Promise<ScanResult> {
   if (phpResult) {
     detections.push(phpResult);
     runtimes.php = phpResult.version;
+  }
+
+  const rubyResult = await detectRuby(dir);
+  if (rubyResult) {
+    detections.push(rubyResult);
+    runtimes.ruby = rubyResult.version;
   }
 
   // Detect start command
@@ -366,6 +373,67 @@ function cleanPhpVersion(raw: string): string {
   return DEFAULT_VERSIONS.php;
 }
 
+// ── Ruby Detection ───────────────────────────────────────────────────────────
+
+async function detectRuby(dir: string): Promise<Detection | null> {
+  // 1. Check .ruby-version
+  const rubyVersionPath = path.join(dir, '.ruby-version');
+  if (await fs.pathExists(rubyVersionPath)) {
+    const raw = (await fs.readFile(rubyVersionPath, 'utf-8')).trim().split('\n')[0].trim();
+    if (/\d/.test(raw)) {
+      const version = cleanRubyVersion(raw);
+      return { runtime: 'ruby', version, source: '.ruby-version' };
+    }
+  }
+
+  // 2. Check Gemfile for `ruby` directive
+  const gemfilePath = path.join(dir, 'Gemfile');
+  if (await fs.pathExists(gemfilePath)) {
+    const content = await fs.readFile(gemfilePath, 'utf-8');
+    // Match: ruby "3.3.0" or ruby '3.2.1' or ruby "~> 3.2"
+    const match = content.match(/^ruby\s+['"]([\d~>=^.<>\s]+)['"]\s*$/m);
+    if (match) {
+      const version = extractRubyVersionFromGemfile(match[1].trim());
+      return { runtime: 'ruby', version, source: 'Gemfile (ruby directive)' };
+    }
+    // Gemfile exists but no version pin
+    return { runtime: 'ruby', version: DEFAULT_VERSIONS.ruby, source: 'Gemfile (detected)' };
+  }
+
+  // 3. Check config.ru (Rack-based app)
+  if (await fs.pathExists(path.join(dir, 'config.ru'))) {
+    return { runtime: 'ruby', version: DEFAULT_VERSIONS.ruby, source: 'config.ru (detected)' };
+  }
+
+  // 4. Fallback: check for .rb files
+  const files = await fs.readdir(dir).catch(() => []);
+  if (files.some(f => f.endsWith('.rb'))) {
+    return { runtime: 'ruby', version: DEFAULT_VERSIONS.ruby, source: 'source files (.rb)' };
+  }
+
+  return null;
+}
+
+function cleanRubyVersion(raw: string): string {
+  // Strip a leading 'ruby-' prefix (rbenv sometimes uses it)
+  const stripped = raw.replace(/^ruby-/i, '').trim();
+  if (/^\d+\.\d+\.\d+$/.test(stripped)) return stripped;
+  if (/^\d+\.\d+$/.test(stripped)) return stripped + '.0';
+  if (/^\d+$/.test(stripped)) return stripped + '.0.0';
+  return DEFAULT_VERSIONS.ruby;
+}
+
+function extractRubyVersionFromGemfile(raw: string): string {
+  // Handle exact: "3.3.0" or pessimistic: "~> 3.2" → "3.2.0"
+  const match = raw.match(/(\d+(?:\.\d+)*)/);
+  if (!match) return DEFAULT_VERSIONS.ruby;
+  const version = match[1];
+  const parts = version.split('.');
+  if (parts.length === 1) return version + '.0.0';
+  if (parts.length === 2) return version + '.0';
+  return version;
+}
+
 // ── Start Command Detection ─────────────────────────────────────────────────
 
 async function detectStartCommand(
@@ -501,6 +569,30 @@ async function detectStartCommand(
       return `php "${phpFiles[0]}"`;
     }
     return 'php -S 127.0.0.1:8000';
+  }
+
+  // Ruby projects
+  if (runtimes.ruby) {
+    // Rails
+    if (await fs.pathExists(path.join(dir, 'bin', 'rails'))) {
+      return 'bundle exec rails server';
+    }
+    // Rack / Sinatra
+    if (await fs.pathExists(path.join(dir, 'config.ru'))) {
+      return 'bundle exec rackup';
+    }
+    // Common entry points
+    for (const entry of ['app.rb', 'main.rb', 'server.rb']) {
+      if (await fs.pathExists(path.join(dir, entry))) {
+        return `ruby "${entry}"`;
+      }
+    }
+    // Fallback: single .rb file
+    const files = await fs.readdir(dir).catch(() => []);
+    const rbFiles = files.filter(f => f.endsWith('.rb'));
+    if (rbFiles.length === 1) {
+      return `ruby "${rbFiles[0]}"`;
+    }
   }
 
   return undefined;

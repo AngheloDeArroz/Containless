@@ -35,7 +35,8 @@ describe('RuntimeDetector', () => {
         'java-17.0.8',
         'invalid-dir',
         'some-modules',
-        'php-8.4.0'
+        'php-8.4.0',
+        'ruby-3.3.0'
       ] as any);
       
       vi.mocked(fs.statSync).mockImplementation((pathStr) => {
@@ -47,7 +48,8 @@ describe('RuntimeDetector', () => {
         node: '18.17.0',
         python: '3.11.4',
         java: '17.0.8',
-        php: '8.4.0'
+        php: '8.4.0',
+        ruby: '3.3.0'
       });
     });
 
@@ -74,6 +76,7 @@ describe('RuntimeDetector', () => {
       expect(detector.getRuntimeBinPath('java', '17')).toBe(path.join(base, 'java-17', 'bin'));
       expect(detector.getRuntimeBinPath('go', '1.21')).toBe(path.join(base, 'go-1.21', 'bin'));
       expect(detector.getRuntimeBinPath('php', '8.4')).toBe(path.join(base, 'php-8.4'));
+      expect(detector.getRuntimeBinPath('ruby', '3.3')).toBe(path.join(base, 'ruby-3.3', 'bin'));
     });
 
     it('handles Unix/macOS paths correctly', () => {
@@ -84,6 +87,7 @@ describe('RuntimeDetector', () => {
       expect(detector.getRuntimeBinPath('python', '3.11')).toBe(path.join(base, 'python-3.11', 'bin'));
       expect(detector.getRuntimeBinPath('go', '1.21')).toBe(path.join(base, 'go-1.21', 'bin'));
       expect(detector.getRuntimeBinPath('php', '8.4')).toBe(path.join(base, 'php-8.4'));
+      expect(detector.getRuntimeBinPath('ruby', '3.3')).toBe(path.join(base, 'ruby-3.3', 'bin'));
     });
 
     it('handles macOS Java specific path', () => {
@@ -101,6 +105,7 @@ describe('RuntimeDetector', () => {
       expect(detector.getRuntimeExecutable('java', '17')).toContain('java.exe');
       expect(detector.getRuntimeExecutable('go', '1')).toContain('go.exe');
       expect(detector.getRuntimeExecutable('php', '8')).toContain('php.exe');
+      expect(detector.getRuntimeExecutable('ruby', '3')).toContain('ruby.exe');
     });
 
     it('uses standard names on Unix', () => {
@@ -110,6 +115,7 @@ describe('RuntimeDetector', () => {
       expect(detector.getRuntimeExecutable('java', '17')).toMatch(/java$/);
       expect(detector.getRuntimeExecutable('go', '1')).toMatch(/go$/);
       expect(detector.getRuntimeExecutable('php', '8')).toMatch(/php$/);
+      expect(detector.getRuntimeExecutable('ruby', '3')).toMatch(/ruby$/);
     });
   });
 });

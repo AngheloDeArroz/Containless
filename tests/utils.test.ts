@@ -124,11 +124,11 @@ describe('formatBytes', () => {
 // ── isSupportedRuntime ───────────────────────────────────────────────────────
 
 describe('isSupportedRuntime', () => {
-  it.each(['node', 'python', 'java', 'go', 'php'])('accepts %s', (runtime) => {
+  it.each(['node', 'python', 'java', 'go', 'php', 'ruby'])('accepts %s', (runtime) => {
     expect(isSupportedRuntime(runtime)).toBe(true);
   });
 
-  it.each(['ruby', 'dotnet', 'rust', '', 'NODE', 'Python'])(
+  it.each(['dotnet', 'rust', '', 'NODE', 'Python'])(
     'rejects %s',
     (runtime) => {
       expect(isSupportedRuntime(runtime)).toBe(false);
